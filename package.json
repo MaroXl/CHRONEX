@@ -1,0 +1,19 @@
+{
+  "name": "chronex",
+  "version": "1.0.0",
+  "description": "Real-time Global Market Sessions Tracker, 24-Hour Visual Timeline, UTC/Local Synchronized Clocks, and Economic Release Countdowns.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "forex",
+    "market-sessions",
+    "economic-calendar",
+    "countdown",
+    "pwa",
+    "utc-clock"
+  ],
+  "author": "Maro",
+  "license": "MIT"
+}

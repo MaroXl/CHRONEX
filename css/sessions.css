@@ -1,0 +1,517 @@
+/* ==========================================================================
+   CHRONEX — Market Sessions & 24h Visual Progress Timeline
+   ========================================================================== */
+
+/* Overlap Live Announcement Banner */
+.overlap-live-banner {
+  margin-bottom: 1.25rem;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.overlap-banner-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-overlap);
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  animation: banner-subtle-glow 3s infinite alternate;
+}
+
+@keyframes banner-subtle-glow {
+  0% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.2); }
+  100% { box-shadow: 0 0 25px rgba(245, 158, 11, 0.35); }
+}
+
+.overlap-banner-inner.active-asian {
+  border-color: #06B6D4;
+  background: linear-gradient(90deg, rgba(6, 182, 212, 0.15) 0%, rgba(6, 182, 212, 0.05) 100%);
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.2);
+}
+
+.overlap-banner-inner.active-eur-asia {
+  border-color: #8B5CF6;
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.15) 0%, rgba(139, 92, 246, 0.05) 100%);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+}
+
+.overlap-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.88rem;
+  color: #FFFFFF;
+}
+
+.pulse-amber-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--color-overlap);
+  box-shadow: 0 0 10px var(--color-overlap);
+  animation: pulse-live 1.5s infinite ease-in-out;
+}
+
+.pulse-cyan-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #06B6D4;
+  box-shadow: 0 0 10px #06B6D4;
+  animation: pulse-live 1.5s infinite ease-in-out;
+}
+
+.pulse-purple-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #8B5CF6;
+  box-shadow: 0 0 10px #8B5CF6;
+  animation: pulse-live 1.5s infinite ease-in-out;
+}
+
+.overlap-desc {
+  font-size: 0.8rem;
+  color: #FCD34D;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   Master 24-Hour Visual Progress Timeline
+   ========================================================================== */
+.timeline-master-wrapper {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem 1.75rem 1.5rem;
+  box-shadow: var(--shadow-card);
+  margin-bottom: 1.5rem;
+}
+
+.timeline-master-shell {
+  position: relative;
+  width: 100%;
+}
+
+.timeline-layout {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+}
+
+.timeline-labels-col {
+  width: 90px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.timeline-axis-spacer {
+  height: 22px; /* matches axis height */
+}
+
+.timeline-session-label {
+  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.row-flag {
+  font-size: 0.95rem;
+}
+
+.row-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.timeline-chart-col {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+
+.timeline-axis {
+  position: relative;
+  width: 100%;
+  height: 22px;
+}
+
+.timeline-axis span {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.timeline-canvas-area {
+  position: relative;
+  width: 100%;
+}
+
+.timeline-tracks-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: relative;
+  z-index: 2;
+}
+
+.timeline-row-track {
+  position: relative;
+  width: 100%;
+  height: 22px;
+  background-color: rgba(22, 29, 43, 0.7);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid rgba(30, 38, 56, 0.6);
+}
+
+.timeline-bar-segment {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 4px;
+  opacity: 0.95;
+  transition: opacity 0.2s ease;
+}
+
+.segment-sydney {
+  background: linear-gradient(90deg, #06B6D4, #0891B2);
+}
+
+.segment-tokyo {
+  background: linear-gradient(90deg, #8B5CF6, #7C3AED);
+}
+
+.segment-london {
+  background: linear-gradient(90deg, #3B82F6, #2563EB);
+}
+
+.segment-new-york {
+  background: linear-gradient(90deg, #EC4899, #DB2777);
+}
+
+/* Overlap Shading Bands across tracks */
+.overlap-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: var(--radius-sm);
+}
+
+.band-london-ny {
+  background-color: rgba(245, 158, 11, 0.12);
+  border-left: 1px dashed rgba(245, 158, 11, 0.7);
+  border-right: 1px dashed rgba(245, 158, 11, 0.7);
+}
+
+.overlap-band-tag {
+  position: absolute;
+  bottom: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--color-overlap);
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+
+.band-asian {
+  background-color: rgba(6, 182, 212, 0.06);
+  border-right: 1px dashed rgba(6, 182, 212, 0.4);
+}
+
+/* Vertical Current UTC Needle Indicator */
+.timeline-current-needle {
+  position: absolute;
+  top: -24px;
+  bottom: -4px;
+  z-index: 10;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.needle-line {
+  width: 2px;
+  height: 100%;
+  margin: 0 auto;
+  background-color: #F1F5F9;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.9), 0 0 18px rgba(56, 189, 248, 0.8);
+}
+
+.needle-head {
+  padding: 0.15rem 0.45rem;
+  background-color: #F1F5F9;
+  color: #0B0E14;
+  border-radius: var(--radius-sm);
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  transform: translateX(-50%);
+  display: inline-block;
+  margin-left: 1px;
+}
+
+/* ==========================================================================
+   Session Cards Grid (Sydney, Tokyo, London, New York)
+   ========================================================================== */
+.session-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+}
+
+.session-card {
+  position: relative;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.session-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Dynamic Status Glows */
+.session-card.card-glow-open {
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 4px 24px -2px rgba(16, 185, 129, 0.25);
+}
+
+.session-card.card-glow-overlap {
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 4px 26px -2px rgba(245, 158, 11, 0.3);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.05) 0%, var(--bg-surface) 60%);
+}
+
+.session-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.session-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.session-flag {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.session-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.session-market {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  display: block;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-open {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: var(--color-open);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-open .status-dot {
+  background-color: var(--color-open);
+  box-shadow: 0 0 6px var(--color-open);
+  animation: pulse-live 1.8s infinite;
+}
+
+.status-overlap {
+  background-color: rgba(245, 158, 11, 0.18);
+  color: var(--color-overlap);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.status-overlap .status-dot {
+  background-color: var(--color-overlap);
+  box-shadow: 0 0 8px var(--color-overlap);
+  animation: pulse-live 1.2s infinite;
+}
+
+.status-closed {
+  background-color: rgba(100, 116, 139, 0.12);
+  color: var(--color-closed);
+  border: 1px solid rgba(100, 116, 139, 0.25);
+}
+
+.status-closed .status-dot {
+  background-color: var(--color-closed);
+}
+
+/* Hours Grid */
+.session-hours-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.85rem;
+  background-color: var(--bg-surface-elevated);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(30, 38, 56, 0.6);
+}
+
+.hours-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.hours-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.hours-val {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+/* Session Progress Bar */
+.session-progress-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.session-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+}
+
+.progress-label {
+  color: var(--text-muted);
+}
+
+.progress-pct {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.session-progress-bar-track {
+  width: 100%;
+  height: 7px;
+  background-color: var(--bg-surface-elevated);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.session-progress-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+.bar-open {
+  background: linear-gradient(90deg, #10B981, #34D399);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.bar-overlap {
+  background: linear-gradient(90deg, #F59E0B, #FBBF24);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+}
+
+.bar-closed {
+  background-color: var(--color-closed);
+  opacity: 0.4;
+}
+
+/* Session Card Footer / Countdown */
+.session-card-footer {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(30, 38, 56, 0.8);
+}
+
+.countdown-context {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.countdown-time {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+/* Responsive Sessions Grid */
+@media (max-width: 1100px) {
+  .session-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .session-cards-grid {
+    grid-template-columns: 1fr;
+  }
+  .timeline-axis {
+    padding-left: 70px;
+  }
+  .timeline-row-label {
+    width: 60px;
+  }
+  .row-name {
+    display: none;
+  }
+}

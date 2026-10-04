@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="theme-color" content="#0B0E14">
+  <meta name="description" content="Chronex — Real-time Global Market Sessions Tracker, 24-Hour Visual Timeline, UTC/Local Synchronized Clocks, and Economic Release Countdowns.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Chronex">
+
+  <title>Chronex — Economic & Session Countdown Dashboard</title>
+
+  <!-- PWA Manifest & Icons -->
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/svg+xml" href="./assets/icons/favicon.svg">
+  <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png">
+
+  <!-- Typography: JetBrains Mono (zero digit flicker) & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/sessions.css">
+  <link rel="stylesheet" href="./css/countdown.css">
+  <link rel="stylesheet" href="./css/modal.css">
+</head>
+<body>
+
+  <!-- Top App Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-wrapper">
+        <div class="brand-icon-box">
+          <img src="./assets/icons/icon.svg" alt="Chronex Logo" width="38" height="38">
+        </div>
+        <div class="brand-text">
+          <h1>
+            CHRONEX
+            <span class="brand-tag">PWA · LIVE</span>
+          </h1>
+          <span class="brand-subtitle">Economic & Market Session Countdown</span>
+        </div>
+      </div>
+
+      <nav class="header-actions" aria-label="Dashboard Controls">
+        <!-- 12h / 24h Toggle -->
+        <button class="btn btn-secondary" id="btn-toggle-time-format" title="Toggle 12h or 24h format" aria-label="Toggle Time Format">
+          <span class="btn-icon">⏱</span>
+          <span>Format: 24H</span>
+        </button>
+
+        <!-- Sound Alert Toggle -->
+        <button class="btn btn-secondary" id="btn-toggle-sound" title="Toggle chime alerts" aria-label="Toggle Sound">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <span>Sound On</span>
+        </button>
+
+        <!-- Desktop Notifications Request -->
+        <button class="btn btn-secondary" id="btn-notifications-permission" title="Enable browser alerts for countdown completion" aria-label="Notifications">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span>Enable Alerts</span>
+        </button>
+
+        <!-- PWA Install Button (Shown when install prompt is available) -->
+        <button class="btn btn-install hidden" id="btn-install-pwa" title="Install Chronex as Desktop / Mobile App" aria-label="Install App">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Install App</span>
+        </button>
+
+        <!-- Add Event Primary Button -->
+        <button class="btn btn-primary" id="btn-open-add-modal">
+          <span style="font-size: 1.1rem; line-height: 1;">+</span>
+          <span>Add Event</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Application Body -->
+  <main class="app-main">
+
+    <!-- Live Universal & Local Clocks -->
+    <section class="clocks-overview-grid" aria-label="Live Synchronized Clocks">
+      <!-- Universal Time (UTC) -->
+      <div class="clock-card clock-card-utc">
+        <div class="clock-header">
+          <div class="clock-type-label">
+            <span class="live-indicator" aria-hidden="true"></span>
+            <span>Universal Time Coordinated</span>
+          </div>
+          <span class="clock-tz-badge mono">UTC / GMT+0</span>
+        </div>
+        <div class="clock-time-display mono" id="utc-live-time">--:--:--</div>
+        <div class="clock-date-display" id="utc-live-date">Loading date...</div>
+      </div>
+
+      <!-- Local Time -->
+      <div class="clock-card clock-card-local">
+        <div class="clock-header">
+          <div class="clock-type-label">
+            <span class="live-indicator" style="background-color: #38BDF8; box-shadow: 0 0 8px #38BDF8;" aria-hidden="true"></span>
+            <span>Your Local Time</span>
+          </div>
+          <span class="clock-tz-badge mono" id="local-tz-label">Detecting timezone...</span>
+        </div>
+        <div class="clock-time-display mono" id="local-live-time">--:--:--</div>
+        <div class="clock-date-display" id="local-live-date">Loading date...</div>
+      </div>
+
+      <!-- City Mini Tickers -->
+      <div class="city-tickers-strip">
+        <div class="city-ticker-item">
+          <div class="city-meta">
+            <span class="city-flag">🇦🇺</span>
+            <span class="city-title">Sydney</span>
+          </div>
+          <span class="city-clock-val mono" id="city-time-sydney">--:--</span>
+        </div>
+        <div class="city-ticker-item">
+          <div class="city-meta">
+            <span class="city-flag">🇯🇵</span>
+            <span class="city-title">Tokyo</span>
+          </div>
+          <span class="city-clock-val mono" id="city-time-tokyo">--:--</span>
+        </div>
+        <div class="city-ticker-item">
+          <div class="city-meta">
+            <span class="city-flag">🇬🇧</span>
+            <span class="city-title">London</span>
+          </div>
+          <span class="city-clock-val mono" id="city-time-london">--:--</span>
+        </div>
+        <div class="city-ticker-item">
+          <div class="city-meta">
+            <span class="city-flag">🇺🇸</span>
+            <span class="city-title">New York</span>
+          </div>
+          <span class="city-clock-val mono" id="city-time-newYork">--:--</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Market Sessions Section -->
+    <section class="sessions-section" id="sessions-section" aria-labelledby="heading-sessions">
+      <div class="section-header-row">
+        <div class="section-title-wrap">
+          <h2 id="heading-sessions">
+            <span>Global Market Sessions</span>
+          </h2>
+          <p class="section-desc">Active trading sessions calculated in UTC with automated overlap and liquidity window tracking.</p>
+        </div>
+      </div>
+
+      <!-- Overlap Announcement Banner (Auto-rendered if active) -->
+      <div class="overlap-live-banner hidden" id="overlap-live-banner"></div>
+
+      <!-- Master 24-Hour Visual Progress Bar / Timeline -->
+      <div class="timeline-master-wrapper">
+        <div class="section-title-wrap" style="margin-bottom: 1rem;">
+          <h3 style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF;">24-Hour Global Progress Bar (UTC)</h3>
+          <span style="font-size: 0.76rem; color: var(--text-muted);">Current UTC position across continuous session spans and liquidity overlaps</span>
+        </div>
+        <div id="timeline-master-container"></div>
+      </div>
+
+      <!-- Session Cards Grid (Sydney, Tokyo, London, New York) -->
+      <div class="session-cards-grid" id="session-cards-container">
+        <!-- Rendered dynamically by js/sessions.js -->
+      </div>
+    </section>
+
+    <!-- Custom Event & News Release Countdown Section -->
+    <section class="countdowns-section" id="countdowns-section" aria-labelledby="heading-countdowns">
+      <div class="section-header-row">
+        <div class="section-title-wrap">
+          <h2 id="heading-countdowns">
+            <span>Economic Releases & Custom Countdowns</span>
+          </h2>
+          <p class="section-desc">Real-time precision timers for high-impact financial data releases, central bank decisions, and personal deadlines.</p>
+        </div>
+      </div>
+
+      <!-- Quick Preset Adder Chips -->
+      <div class="presets-chip-bar">
+        <span class="preset-chip-label">Quick Presets:</span>
+        <button class="preset-chip" data-title="US CPI Release" data-impact="high" data-cat="financial" data-hours="3.5">+ US CPI (3.5h)</button>
+        <button class="preset-chip" data-title="FOMC Rate Decision" data-impact="high" data-cat="financial" data-hours="24">+ FOMC Rate (24h)</button>
+        <button class="preset-chip" data-title="London / NY Session Open" data-impact="high" data-cat="financial" data-hours="8">+ London/NY Open</button>
+        <button class="preset-chip" data-title="Non-Farm Payrolls (NFP)" data-impact="high" data-cat="financial" data-hours="72">+ US NFP</button>
+        <button class="preset-chip" data-title="Academic Project Defense" data-impact="high" data-cat="academic" data-hours="48">+ Academic Defense</button>
+      </div>
+
+      <!-- Toolbar: Filters, Search, and Sort -->
+      <div class="events-toolbar">
+        <div class="filter-pills-group" role="tablist" aria-label="Event Category Filter">
+          <button class="filter-btn active" data-filter="all">All Events</button>
+          <button class="filter-btn" data-filter="high">High Impact</button>
+          <button class="filter-btn" data-filter="medium">Medium</button>
+          <button class="filter-btn" data-filter="low">Low</button>
+          <button class="filter-btn" data-filter="financial">Financial</button>
+          <button class="filter-btn" data-filter="academic">Academic</button>
+        </div>
+
+        <div class="search-sort-group">
+          <div class="search-input-box">
+            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="event-search-input" placeholder="Search releases..." aria-label="Search events">
+          </div>
+
+          <select class="sort-select" id="event-sort-select" aria-label="Sort events by">
+            <option value="soonest">Sort: Soonest First</option>
+            <option value="latest">Sort: Furthest First</option>
+            <option value="impact">Sort: Highest Impact</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Cards Grid -->
+      <div class="events-cards-grid" id="events-cards-grid">
+        <!-- Rendered dynamically by js/countdown.js -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Add / Edit Event HTML5 <dialog> Modal -->
+  <dialog class="modal-dialog" id="modal-event-dialog" aria-labelledby="modal-dialog-title">
+    <div class="modal-header">
+      <h3 id="modal-dialog-title">Add Countdown Event</h3>
+      <button class="btn-icon-ghost" id="btn-close-modal" aria-label="Close dialog">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <form id="form-event-editor">
+      <input type="hidden" id="input-event-id" value="">
+
+      <div class="form-body">
+        <div class="form-group">
+          <label for="input-event-title">Event Title <span class="required-star">*</span></label>
+          <input type="text" id="input-event-title" class="form-input" placeholder="e.g. US CPI Release, FOMC Meeting, Project Due" required>
+        </div>
+
+        <div class="form-group">
+          <label for="input-event-datetime">Target Date & Local Time <span class="required-star">*</span></label>
+          <input type="datetime-local" id="input-event-datetime" class="form-input mono" required>
+          <span class="form-hint">Time is entered in your local timezone and automatically synced with UTC.</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="input-event-impact">Impact Level</label>
+            <select id="input-event-impact" class="form-select">
+              <option value="high">🔴 High Impact</option>
+              <option value="medium" selected>🟡 Medium Impact</option>
+              <option value="low">🔵 Low Impact</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="input-event-category">Category</label>
+            <select id="input-event-category" class="form-select">
+              <option value="financial" selected>📈 Financial / Economic</option>
+              <option value="academic">🎓 Academic / Education</option>
+              <option value="personal">💼 Project / Personal</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="input-event-notes">Notes / Details (Optional)</label>
+          <textarea id="input-event-notes" class="form-textarea" placeholder="Expected forecast, currency pairs affected, or submission link..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-save-modal">Save Event</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Hidden file input for JSON import -->
+  <input type="file" id="input-import-file" accept=".json" style="display: none;">
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <!-- App Footer -->
+  <footer class="app-footer">
+    <div class="footer-inner">
+      <div>
+        <strong>Chronex Dashboard</strong> · Progressive Web App (PWA) with Offline Caching & LocalStorage Persistence.
+      </div>
+      <div class="footer-meta">
+        <button class="footer-btn-link" id="btn-export-backup">Export Backup (JSON)</button>
+        <span>·</span>
+        <button class="footer-btn-link" id="btn-import-backup-trigger">Import Backup</button>
+        <span>·</span>
+        <button class="footer-btn-link" id="btn-reset-defaults">Restore Presets</button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Application Script (ES Module) -->
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
