@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
   <meta name="theme-color" content="#0B0E14">
-  <meta name="description" content="Chronex — Real-time Global Market Sessions Tracker, 24-Hour Visual Timeline, UTC/Local Synchronized Clocks, and Economic Release Countdowns.">
+  <meta name="description" content="CHRONEX">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Chronex">
+  <meta name="apple-mobile-web-app-title" content="CHRONEX">
 
-  <title>Chronex — Economic & Session Countdown Dashboard</title>
+  <title>CHRONEX</title>
 
   <!-- PWA Manifest & Icons -->
   <link rel="manifest" href="./manifest.json">
@@ -22,19 +22,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="./css/style.css?v=2.1.0">
-  <link rel="stylesheet" href="./css/sessions.css?v=2.1.0">
-  <link rel="stylesheet" href="./css/countdown.css?v=2.1.0">
-  <link rel="stylesheet" href="./css/calendar.css?v=2.1.0">
-  <link rel="stylesheet" href="./css/modal.css?v=2.1.0">
+  <link rel="stylesheet" href="./css/style.css?v=2.2.0">
+  <link rel="stylesheet" href="./css/sessions.css?v=2.2.0">
+  <link rel="stylesheet" href="./css/countdown.css?v=2.2.0">
+  <link rel="stylesheet" href="./css/calendar.css?v=2.2.0">
+  <link rel="stylesheet" href="./css/modal.css?v=2.2.0">
 
   <!-- Instant Cache Invalidator & SW Updater -->
   <script>
     if ('caches' in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'chronex-v2.1.0' && (k.startsWith('chronex-v1') || k === 'chronex-v1.1.0')) {
-            console.log('[Chronex] Purged legacy cache:', k);
+          if (k !== 'chronex-v2.2.0') {
             caches.delete(k);
           }
         });
@@ -51,19 +50,23 @@
 </head>
 <body>
 
+  <!-- iOS Liquid Glass Ambient Background Mesh -->
+  <div class="liquid-bg" aria-hidden="true">
+    <div class="liquid-orb orb-1"></div>
+    <div class="liquid-orb orb-2"></div>
+    <div class="liquid-orb orb-3"></div>
+    <div class="liquid-orb orb-4"></div>
+  </div>
+
   <!-- Top App Header -->
   <header class="app-header">
     <div class="header-container">
       <div class="brand-wrapper">
         <div class="brand-icon-box">
-          <img src="./assets/icons/icon.svg" alt="Chronex Logo" width="38" height="38">
+          <img src="./assets/icons/icon.svg" alt="CHRONEX Logo" width="36" height="36">
         </div>
         <div class="brand-text">
-          <h1>
-            CHRONEX
-            <span class="brand-tag">PWA · LIVE</span>
-          </h1>
-          <span class="brand-subtitle">Economic & Market Session Countdown</span>
+          <h1 class="brand-title">CHRONEX</h1>
         </div>
       </div>
 
@@ -401,7 +404,7 @@
   <footer class="app-footer">
     <div class="footer-inner">
       <div>
-        <strong>Chronex Dashboard</strong> · Progressive Web App (PWA) with Offline Caching & LocalStorage Persistence.
+        <strong>CHRONEX</strong>
       </div>
       <div class="footer-meta">
         <button class="footer-btn-link" id="btn-export-backup">Export Backup (JSON)</button>
@@ -414,6 +417,6 @@
   </footer>
 
   <!-- Application Script (ES Module) -->
-  <script type="module" src="./js/app.js?v=2.1.0"></script>
+  <script type="module" src="./js/app.js?v=2.2.0"></script>
 </body>
 </html>

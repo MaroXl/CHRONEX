@@ -1,7 +1,7 @@
 {
-  "name": "Chronex — Economic & Market Session Dashboard",
-  "short_name": "Chronex",
-  "description": "Real-time global market session tracking, 24-hour visual progress, UTC/Local synchronized clocks, and high-impact economic release countdowns.",
+  "name": "CHRONEX",
+  "short_name": "CHRONEX",
+  "description": "CHRONEX",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

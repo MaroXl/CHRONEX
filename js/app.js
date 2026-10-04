@@ -259,7 +259,7 @@ class ChronexApp {
           StorageManager.saveSettings({ notificationsEnabled: true });
           this.updateNotificationButtonState();
           this.showToast('Desktop notifications enabled!', 'success');
-          new Notification('Chronex Live Alerts Active', {
+          new Notification('CHRONEX Alerts Active', {
             body: 'You will receive timely alerts when scheduled releases countdown to zero.',
             icon: './assets/icons/icon-192.png'
           });
@@ -565,8 +565,8 @@ class ChronexApp {
     });
 
     window.addEventListener('appinstalled', () => {
-      console.log('[Chronex PWA] Successfully installed!');
-      this.showToast('Chronex installed as an app!', 'success');
+      console.log('[CHRONEX PWA] Successfully installed!');
+      this.showToast('CHRONEX installed as an app!', 'success');
       this.dom.btnInstallPwa?.classList.add('hidden');
     });
 

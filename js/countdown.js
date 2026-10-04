@@ -163,7 +163,7 @@ export class CountdownManager {
         stateChanged = true;
         chronexAudio.playChime('release');
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification(`Chronex Alert: ${e.title}`, {
+          new Notification(`CHRONEX Alert: ${e.title}`, {
             body: `Event countdown reached zero! Impact: ${e.impact.toUpperCase()}`,
             icon: './assets/icons/icon-192.png'
           });
