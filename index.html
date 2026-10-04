@@ -33,7 +33,7 @@
     if ('caches' in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'chronex-v2.2.0' && k !== 'chronex-fonts') {
+          if (k !== 'chronex-v2.3.0' && k !== 'chronex-fonts') {
             caches.delete(k);
           }
         });
@@ -101,6 +101,43 @@
           </svg>
           <span>Install App</span>
         </button>
+
+        <!-- Auth Button (Shown when guest / logged out) -->
+        <button class="btn btn-secondary" id="btn-open-auth-modal" title="Sign In or Create Account" aria-label="Sign In">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span>Sign In</span>
+        </button>
+
+        <!-- User Profile Pill & Dropdown (Shown when logged in) -->
+        <div class="user-profile-menu-wrap hidden" id="user-profile-menu-wrap">
+          <button class="btn-user-pill" id="btn-user-profile-pill" aria-expanded="false" aria-haspopup="true" title="User Profile & Settings">
+            <span class="user-avatar-circle" id="user-avatar-initials">U</span>
+            <span class="user-display-name" id="user-display-name">User</span>
+            <span class="user-caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="user-dropdown-glass hidden" id="user-dropdown-glass" role="menu">
+            <div class="user-dropdown-header">
+              <strong id="dropdown-user-name">User Name</strong>
+              <span class="dropdown-user-email mono" id="dropdown-user-email">user@chronex.app</span>
+            </div>
+            <div class="user-dropdown-divider"></div>
+            <div class="user-dropdown-item-meta">
+              <span class="dropdown-badge-active">● Active Cloud Account</span>
+            </div>
+            <div class="user-dropdown-divider"></div>
+            <button class="user-dropdown-item btn-logout" id="btn-action-logout" role="menuitem">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              <span>Log Out</span>
+            </button>
+          </div>
+        </div>
 
         <!-- Add Event Primary Button -->
         <button class="btn btn-primary" id="btn-open-add-modal">
@@ -394,6 +431,143 @@
     </form>
   </dialog>
 
+  <!-- Authentication Modal (Sign In, Create Account, Forgot Password) -->
+  <dialog class="modal-dialog modal-auth" id="modal-auth-dialog">
+    <div class="modal-header">
+      <div class="auth-tabs" id="auth-tabs-bar" role="tablist">
+        <button type="button" class="auth-tab-btn active" id="tab-auth-login" role="tab" aria-selected="true">Sign In</button>
+        <button type="button" class="auth-tab-btn" id="tab-auth-signup" role="tab" aria-selected="false">Create Account</button>
+      </div>
+      <button type="button" class="btn-close-modal" id="btn-close-auth-modal" aria-label="Close modal">✕</button>
+    </div>
+
+    <!-- Alert / Status Banner -->
+    <div class="auth-alert-banner hidden" id="auth-alert-banner" role="alert"></div>
+
+    <!-- 1. Log In Form -->
+    <form id="form-auth-login" class="auth-view" autocomplete="on">
+      <div class="form-body">
+        <div class="form-group">
+          <label for="input-login-email">Email Address <span class="required-star">*</span></label>
+          <input type="email" id="input-login-email" class="form-input" placeholder="trader@example.com" autocomplete="username" required>
+        </div>
+
+        <div class="form-group">
+          <div class="label-with-action">
+            <label for="input-login-password">Password <span class="required-star">*</span></label>
+            <button type="button" class="link-btn" id="btn-goto-forgot">Forgot Password?</button>
+          </div>
+          <div class="password-input-wrap">
+            <input type="password" id="input-login-password" class="form-input" placeholder="Enter your password" autocomplete="current-password" required>
+            <button type="button" class="btn-toggle-pw" id="btn-toggle-login-pw" title="Show / Hide Password" aria-label="Toggle password visibility">👁</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-auth-login">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-login">Sign In</button>
+      </div>
+
+      <div class="auth-switch-prompt">
+        <span>Don't have a Chronex account?</span>
+        <button type="button" class="link-btn" id="btn-switch-to-signup">Create one</button>
+      </div>
+    </form>
+
+    <!-- 2. Sign Up Form -->
+    <form id="form-auth-signup" class="auth-view hidden" autocomplete="on">
+      <div class="form-body">
+        <div class="form-group">
+          <label for="input-signup-name">Your Full Name <span class="required-star">*</span></label>
+          <input type="text" id="input-signup-name" class="form-input" placeholder="e.g. Alex Morgan" autocomplete="name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="input-signup-email">Email Address <span class="required-star">*</span></label>
+          <input type="email" id="input-signup-email" class="form-input" placeholder="alex@example.com" autocomplete="email" required>
+        </div>
+
+        <div class="form-group">
+          <label for="input-signup-password">Password (min 6 characters) <span class="required-star">*</span></label>
+          <div class="password-input-wrap">
+            <input type="password" id="input-signup-password" class="form-input" placeholder="Create a secure password" minlength="6" autocomplete="new-password" required>
+            <button type="button" class="btn-toggle-pw" id="btn-toggle-signup-pw" title="Show / Hide Password" aria-label="Toggle password visibility">👁</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="input-signup-question">Security Question (For Account Recovery) <span class="required-star">*</span></label>
+          <select id="input-signup-question" class="form-select" required>
+            <option value="What is your primary trading market or city?" selected>What is your primary trading market or city?</option>
+            <option value="What was the name of your first mentor or school?">What was the name of your first mentor or school?</option>
+            <option value="What is your favorite financial asset or ticker?">What is your favorite financial asset or ticker?</option>
+            <option value="In what city were you born?">In what city were you born?</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="input-signup-answer">Security Answer <span class="required-star">*</span></label>
+          <input type="text" id="input-signup-answer" class="form-input" placeholder="Answer to your security question" required>
+          <span class="form-hint">Remember this answer. It is used to securely verify you if you ever forget your password.</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-auth-signup">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-signup">Create Account</button>
+      </div>
+
+      <div class="auth-switch-prompt">
+        <span>Already have an account?</span>
+        <button type="button" class="link-btn" id="btn-switch-to-login">Sign in</button>
+      </div>
+    </form>
+
+    <!-- 3. Forgot Password Form -->
+    <form id="form-auth-forgot" class="auth-view hidden" autocomplete="off">
+      <div class="form-body">
+        <div class="forgot-instructions">
+          Enter your registered email address to locate your account and verify your security answer to set a new password.
+        </div>
+
+        <div class="form-group" id="forgot-step-1">
+          <label for="input-forgot-email">Account Email <span class="required-star">*</span></label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="email" id="input-forgot-email" class="form-input" placeholder="Enter registered email" required style="flex: 1;">
+            <button type="button" class="btn btn-secondary" id="btn-forgot-find-account">Find</button>
+          </div>
+        </div>
+
+        <!-- Step 2: Display Question & New Password fields -->
+        <div id="forgot-step-2" class="hidden" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 0.5rem;">
+          <div class="form-group">
+            <label>Security Question</label>
+            <div class="security-question-box" id="forgot-question-text">Loading question...</div>
+          </div>
+
+          <div class="form-group">
+            <label for="input-forgot-answer">Your Security Answer <span class="required-star">*</span></label>
+            <input type="text" id="input-forgot-answer" class="form-input" placeholder="Enter your registered answer">
+          </div>
+
+          <div class="form-group">
+            <label for="input-forgot-newpw">New Password (min 6 characters) <span class="required-star">*</span></label>
+            <div class="password-input-wrap">
+              <input type="password" id="input-forgot-newpw" class="form-input" placeholder="Enter new password" minlength="6">
+              <button type="button" class="btn-toggle-pw" id="btn-toggle-forgot-pw" title="Show / Hide Password" aria-label="Toggle password visibility">👁</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-forgot-back-login">Back to Sign In</button>
+        <button type="submit" class="btn btn-primary hidden" id="btn-submit-reset-pw">Reset Password</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Hidden file input for JSON import -->
   <input type="file" id="input-import-file" accept=".json" style="display: none;">
 
@@ -417,6 +591,6 @@
   </footer>
 
   <!-- Application Script (ES Module) -->
-  <script type="module" src="./js/app.js?v=2.2.0"></script>
+  <script type="module" src="./js/app.js?v=2.3.0"></script>
 </body>
 </html>

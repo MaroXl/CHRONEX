@@ -14,3 +14,4 @@ npm-debug.log*
 # Environment & local state
 .env
 .env.local
+data/*.json

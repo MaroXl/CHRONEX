@@ -9,6 +9,7 @@ import { CountdownManager } from './countdown.js?v=2.1.0';
 import { CalendarManager } from './calendar.js?v=2.1.0';
 import { StorageManager } from './storage.js?v=2.1.0';
 import { chronexAudio } from './audio.js?v=2.1.0';
+import { authManager } from './auth.js?v=2.2.0';
 
 class ChronexApp {
   constructor() {
@@ -56,12 +57,61 @@ class ChronexApp {
       btnImportTrigger: document.getElementById('btn-import-backup-trigger'),
       fileImportInput: document.getElementById('input-import-file'),
       btnResetDefaults: document.getElementById('btn-reset-defaults'),
-      toastContainer: document.getElementById('toast-container')
+      toastContainer: document.getElementById('toast-container'),
+      // Authentication & User Profile Elements
+      modalAuth: document.getElementById('modal-auth-dialog'),
+      btnOpenAuth: document.getElementById('btn-open-auth-modal'),
+      btnCloseAuth: document.getElementById('btn-close-auth-modal'),
+      userProfileWrap: document.getElementById('user-profile-menu-wrap'),
+      btnUserProfilePill: document.getElementById('btn-user-profile-pill'),
+      userAvatarInitials: document.getElementById('user-avatar-initials'),
+      userDisplayName: document.getElementById('user-display-name'),
+      userDropdownGlass: document.getElementById('user-dropdown-glass'),
+      dropdownUserName: document.getElementById('dropdown-user-name'),
+      dropdownUserEmail: document.getElementById('dropdown-user-email'),
+      btnLogout: document.getElementById('btn-action-logout'),
+      authTabsBar: document.getElementById('auth-tabs-bar'),
+      tabAuthLogin: document.getElementById('tab-auth-login'),
+      tabAuthSignup: document.getElementById('tab-auth-signup'),
+      authAlertBanner: document.getElementById('auth-alert-banner'),
+      // Form Login
+      formAuthLogin: document.getElementById('form-auth-login'),
+      inputLoginEmail: document.getElementById('input-login-email'),
+      inputLoginPassword: document.getElementById('input-login-password'),
+      btnToggleLoginPw: document.getElementById('btn-toggle-login-pw'),
+      btnGotoForgot: document.getElementById('btn-goto-forgot'),
+      btnCancelAuthLogin: document.getElementById('btn-cancel-auth-login'),
+      btnSwitchToSignup: document.getElementById('btn-switch-to-signup'),
+      // Form Signup
+      formAuthSignup: document.getElementById('form-auth-signup'),
+      inputSignupName: document.getElementById('input-signup-name'),
+      inputSignupEmail: document.getElementById('input-signup-email'),
+      inputSignupPassword: document.getElementById('input-signup-password'),
+      btnToggleSignupPw: document.getElementById('btn-toggle-signup-pw'),
+      inputSignupQuestion: document.getElementById('input-signup-question'),
+      inputSignupAnswer: document.getElementById('input-signup-answer'),
+      btnCancelAuthSignup: document.getElementById('btn-cancel-auth-signup'),
+      btnSwitchToLogin: document.getElementById('btn-switch-to-login'),
+      // Form Forgot Password
+      formAuthForgot: document.getElementById('form-auth-forgot'),
+      inputForgotEmail: document.getElementById('input-forgot-email'),
+      btnForgotFindAccount: document.getElementById('btn-forgot-find-account'),
+      forgotStep2: document.getElementById('forgot-step-2'),
+      forgotQuestionText: document.getElementById('forgot-question-text'),
+      inputForgotAnswer: document.getElementById('input-forgot-answer'),
+      inputForgotNewPw: document.getElementById('input-forgot-newpw'),
+      btnToggleForgotPw: document.getElementById('btn-toggle-forgot-pw'),
+      btnForgotBackLogin: document.getElementById('btn-forgot-back-login'),
+      btnSubmitResetPw: document.getElementById('btn-submit-reset-pw')
     };
   }
 
-  init() {
+  async init() {
     try {
+      // 0. Initialize Auth session & listen for state changes
+      authManager.onAuthStateChanged((user) => this.handleAuthStateChanged(user));
+      await authManager.init();
+
       // 1. Audio setting
       chronexAudio.enabled = this.settings.soundEnabled;
       this.updateAudioButtonState();
@@ -357,6 +407,295 @@ class ChronexApp {
     });
 
     this.updateNotificationButtonState();
+
+    // Setup Authentication & Account Management Listeners
+    this.setupAuthListeners();
+  }
+
+  setupAuthListeners() {
+    // Open Auth Modal
+    this.dom.btnOpenAuth?.addEventListener('click', () => {
+      chronexAudio.playChime('click');
+      this.openAuthModal('login');
+    });
+
+    // Close Auth Modal
+    this.dom.btnCloseAuth?.addEventListener('click', () => this.closeAuthModal());
+    this.dom.btnCancelAuthLogin?.addEventListener('click', () => this.closeAuthModal());
+    this.dom.btnCancelAuthSignup?.addEventListener('click', () => this.closeAuthModal());
+
+    // Close on backdrop click
+    this.dom.modalAuth?.addEventListener('click', (e) => {
+      if (e.target === this.dom.modalAuth) {
+        this.closeAuthModal();
+      }
+    });
+
+    // Tabs and Mode Switchers
+    this.dom.tabAuthLogin?.addEventListener('click', () => this.switchAuthTab('login'));
+    this.dom.tabAuthSignup?.addEventListener('click', () => this.switchAuthTab('signup'));
+    this.dom.btnSwitchToSignup?.addEventListener('click', () => this.switchAuthTab('signup'));
+    this.dom.btnSwitchToLogin?.addEventListener('click', () => this.switchAuthTab('login'));
+    this.dom.btnGotoForgot?.addEventListener('click', () => this.switchAuthTab('forgot'));
+    this.dom.btnForgotBackLogin?.addEventListener('click', () => this.switchAuthTab('login'));
+
+    // Password visibility toggles
+    this.dom.btnToggleLoginPw?.addEventListener('click', () => {
+      this.togglePwVisibility(this.dom.inputLoginPassword, this.dom.btnToggleLoginPw);
+    });
+    this.dom.btnToggleSignupPw?.addEventListener('click', () => {
+      this.togglePwVisibility(this.dom.inputSignupPassword, this.dom.btnToggleSignupPw);
+    });
+    this.dom.btnToggleForgotPw?.addEventListener('click', () => {
+      this.togglePwVisibility(this.dom.inputForgotNewPw, this.dom.btnToggleForgotPw);
+    });
+
+    // Form: Sign In
+    this.dom.formAuthLogin?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = this.dom.inputLoginEmail.value.trim();
+      const password = this.dom.inputLoginPassword.value;
+      const submitBtn = document.getElementById('btn-submit-login');
+
+      try {
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Signing in...';
+        }
+        const user = await authManager.logIn(email, password);
+        this.closeAuthModal();
+        this.showToast(`Welcome back, ${user.name}!`, 'success');
+        chronexAudio.playChime('click');
+      } catch (err) {
+        this.setAuthAlert(err.message || 'Login failed. Please verify credentials.', 'error');
+        chronexAudio.playChime('error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Sign In';
+        }
+      }
+    });
+
+    // Form: Sign Up
+    this.dom.formAuthSignup?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = this.dom.inputSignupName.value.trim();
+      const email = this.dom.inputSignupEmail.value.trim();
+      const password = this.dom.inputSignupPassword.value;
+      const securityQuestion = this.dom.inputSignupQuestion.value;
+      const securityAnswer = this.dom.inputSignupAnswer.value.trim();
+      const submitBtn = document.getElementById('btn-submit-signup');
+
+      try {
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Creating account...';
+        }
+        const user = await authManager.signUp({
+          name,
+          email,
+          password,
+          securityQuestion,
+          securityAnswer
+        });
+        this.closeAuthModal();
+        this.showToast(`Account created! Welcome, ${user.name}!`, 'success');
+        chronexAudio.playChime('click');
+      } catch (err) {
+        this.setAuthAlert(err.message || 'Registration failed.', 'error');
+        chronexAudio.playChime('error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Create Account';
+        }
+      }
+    });
+
+    // Forgot Password: Find Account Step
+    this.dom.btnForgotFindAccount?.addEventListener('click', async () => {
+      const email = this.dom.inputForgotEmail.value.trim();
+      if (!email) {
+        this.setAuthAlert('Please enter your registered email address.', 'error');
+        return;
+      }
+      try {
+        this.dom.btnForgotFindAccount.disabled = true;
+        this.dom.btnForgotFindAccount.textContent = 'Searching...';
+        const question = await authManager.checkAccountForReset(email);
+        if (this.dom.forgotQuestionText) this.dom.forgotQuestionText.textContent = question;
+        if (this.dom.forgotStep2) this.dom.forgotStep2.classList.remove('hidden');
+        if (this.dom.btnSubmitResetPw) this.dom.btnSubmitResetPw.classList.remove('hidden');
+        this.clearAuthAlert();
+        this.setAuthAlert('Account located! Answer your security question below to set a new password.', 'success');
+      } catch (err) {
+        this.setAuthAlert(err.message || 'Could not locate account with this email.', 'error');
+      } finally {
+        this.dom.btnForgotFindAccount.disabled = false;
+        this.dom.btnForgotFindAccount.textContent = 'Find';
+      }
+    });
+
+    // Form: Forgot Password Reset
+    this.dom.formAuthForgot?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = this.dom.inputForgotEmail.value.trim();
+      const securityAnswer = this.dom.inputForgotAnswer.value.trim();
+      const newPassword = this.dom.inputForgotNewPw.value;
+      const submitBtn = this.dom.btnSubmitResetPw;
+
+      try {
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Updating password...';
+        }
+        await authManager.resetPassword({ email, securityAnswer, newPassword });
+        this.setAuthAlert('Password successfully reset! Please sign in with your new password.', 'success');
+        chronexAudio.playChime('click');
+        setTimeout(() => {
+          this.switchAuthTab('login');
+          if (this.dom.inputLoginEmail) this.dom.inputLoginEmail.value = email;
+          if (this.dom.inputLoginPassword) this.dom.inputLoginPassword.value = '';
+        }, 1500);
+      } catch (err) {
+        this.setAuthAlert(err.message || 'Failed to reset password.', 'error');
+        chronexAudio.playChime('error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Reset Password';
+        }
+      }
+    });
+
+    // User Profile Pill Toggle
+    this.dom.btnUserProfilePill?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!this.dom.userDropdownGlass) return;
+      const isHidden = this.dom.userDropdownGlass.classList.contains('hidden');
+      this.dom.userDropdownGlass.classList.toggle('hidden', !isHidden);
+      this.dom.btnUserProfilePill.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+    });
+
+    // Close user dropdown if clicked outside
+    document.addEventListener('click', (e) => {
+      if (this.dom.userProfileWrap && !this.dom.userProfileWrap.contains(e.target)) {
+        if (this.dom.userDropdownGlass) {
+          this.dom.userDropdownGlass.classList.add('hidden');
+          this.dom.btnUserProfilePill?.setAttribute('aria-expanded', 'false');
+        }
+      }
+    });
+
+    // Logout Action
+    this.dom.btnLogout?.addEventListener('click', () => {
+      authManager.logOut();
+      this.showToast('Logged out. Your account and custom events remain safely preserved.', 'info');
+      chronexAudio.playChime('click');
+    });
+  }
+
+  handleAuthStateChanged(user) {
+    if (user) {
+      // User is logged in: scope StorageManager to this user ID
+      StorageManager.setUserId(user.id);
+
+      if (this.dom.btnOpenAuth) this.dom.btnOpenAuth.classList.add('hidden');
+      if (this.dom.userProfileWrap) this.dom.userProfileWrap.classList.remove('hidden');
+
+      const initials = (user.name ? user.name.slice(0, 2) : (user.email ? user.email.slice(0, 2) : 'U')).toUpperCase();
+      if (this.dom.userAvatarInitials) this.dom.userAvatarInitials.textContent = initials;
+      if (this.dom.userDisplayName) this.dom.userDisplayName.textContent = user.name || user.email.split('@')[0];
+      if (this.dom.dropdownUserName) this.dom.dropdownUserName.textContent = user.name || 'Trader';
+      if (this.dom.dropdownUserEmail) this.dom.dropdownUserEmail.textContent = user.email || '';
+
+      if (this.countdown) {
+        this.countdown.loadEvents();
+        this.countdown.render();
+      }
+    } else {
+      // Guest / Logged out
+      StorageManager.setUserId(null);
+
+      if (this.dom.btnOpenAuth) this.dom.btnOpenAuth.classList.remove('hidden');
+      if (this.dom.userProfileWrap) this.dom.userProfileWrap.classList.add('hidden');
+      if (this.dom.userDropdownGlass) this.dom.userDropdownGlass.classList.add('hidden');
+
+      if (this.countdown) {
+        this.countdown.loadEvents();
+        this.countdown.render();
+      }
+    }
+  }
+
+  openAuthModal(mode = 'login') {
+    this.clearAuthAlert();
+    this.switchAuthTab(mode);
+    if (this.dom.modalAuth) {
+      this.dom.modalAuth.showModal();
+    }
+  }
+
+  closeAuthModal() {
+    if (this.dom.modalAuth) {
+      this.dom.modalAuth.close();
+    }
+    this.clearAuthAlert();
+  }
+
+  switchAuthTab(mode) {
+    this.clearAuthAlert();
+    const isLogin = mode === 'login';
+    const isSignup = mode === 'signup';
+    const isForgot = mode === 'forgot';
+
+    if (this.dom.authTabsBar) {
+      this.dom.authTabsBar.style.display = isForgot ? 'none' : 'flex';
+    }
+
+    if (this.dom.tabAuthLogin) {
+      this.dom.tabAuthLogin.classList.toggle('active', isLogin);
+      this.dom.tabAuthLogin.setAttribute('aria-selected', isLogin ? 'true' : 'false');
+    }
+    if (this.dom.tabAuthSignup) {
+      this.dom.tabAuthSignup.classList.toggle('active', isSignup);
+      this.dom.tabAuthSignup.setAttribute('aria-selected', isSignup ? 'true' : 'false');
+    }
+
+    if (this.dom.formAuthLogin) this.dom.formAuthLogin.classList.toggle('hidden', !isLogin);
+    if (this.dom.formAuthSignup) this.dom.formAuthSignup.classList.toggle('hidden', !isSignup);
+    if (this.dom.formAuthForgot) this.dom.formAuthForgot.classList.toggle('hidden', !isForgot);
+
+    if (isLogin && this.dom.inputLoginEmail) {
+      setTimeout(() => this.dom.inputLoginEmail.focus(), 50);
+    } else if (isSignup && this.dom.inputSignupName) {
+      setTimeout(() => this.dom.inputSignupName.focus(), 50);
+    } else if (isForgot && this.dom.inputForgotEmail) {
+      if (this.dom.forgotStep2) this.dom.forgotStep2.classList.add('hidden');
+      if (this.dom.btnSubmitResetPw) this.dom.btnSubmitResetPw.classList.add('hidden');
+      setTimeout(() => this.dom.inputForgotEmail.focus(), 50);
+    }
+  }
+
+  setAuthAlert(message, type = 'error') {
+    if (!this.dom.authAlertBanner) return;
+    this.dom.authAlertBanner.textContent = message;
+    this.dom.authAlertBanner.className = `auth-alert-banner ${type}`;
+    this.dom.authAlertBanner.classList.remove('hidden');
+  }
+
+  clearAuthAlert() {
+    if (!this.dom.authAlertBanner) return;
+    this.dom.authAlertBanner.textContent = '';
+    this.dom.authAlertBanner.className = 'auth-alert-banner hidden';
+  }
+
+  togglePwVisibility(inputEl, btnEl) {
+    if (!inputEl) return;
+    const isPw = inputEl.type === 'password';
+    inputEl.type = isPw ? 'text' : 'password';
+    if (btnEl) btnEl.textContent = isPw ? '🙈' : '👁';
   }
 
   openAddModal() {
@@ -580,10 +919,10 @@ class ChronexApp {
 }
 
 // Robust startup: works whether DOM is loading, interactive, or complete
-function launchChronex() {
+async function launchChronex() {
   try {
     const app = new ChronexApp();
-    app.init();
+    await app.init();
     window.chronexApp = app;
     console.log('[Chronex] Application loaded and running');
   } catch (err) {

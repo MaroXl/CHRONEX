@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chronex-v2.2.0';
+const CACHE_NAME = 'chronex-v2.3.0';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -15,6 +15,7 @@ const STATIC_ASSETS = [
   './js/calendar.js',
   './js/storage.js',
   './js/audio.js',
+  './js/auth.js',
   './assets/icons/icon.svg',
   './assets/icons/favicon.svg',
   './assets/icons/icon-192.png',

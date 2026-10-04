@@ -134,3 +134,296 @@ dialog[open] {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   Authentication Modal & User Profile Dropdown (iOS Liquid Glass)
+   ========================================================================== */
+.modal-auth {
+  max-width: 440px;
+}
+
+.auth-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(10, 14, 22, 0.65);
+  padding: 0.25rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-tab-btn {
+  background: transparent;
+  border: none;
+  padding: 0.35rem 0.95rem;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.25s var(--ease-ios);
+}
+
+.auth-tab-btn:hover {
+  color: #FFFFFF;
+}
+
+.auth-tab-btn.active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.auth-alert-banner {
+  margin: 0.75rem 1.5rem 0 1.5rem;
+  padding: 0.65rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.auth-alert-banner.error {
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #FCA5A5;
+}
+
+.auth-alert-banner.success {
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #6EE7B7;
+}
+
+.label-with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: #38BDF8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.link-btn:hover {
+  color: #7DD3FC;
+  text-decoration: underline;
+}
+
+.password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrap input {
+  padding-right: 2.5rem;
+}
+
+.btn-toggle-pw {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0.2rem;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.btn-toggle-pw:hover {
+  color: #FFFFFF;
+}
+
+.auth-switch-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.85rem 1.5rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.forgot-instructions {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin-bottom: 0.5rem;
+}
+
+.security-question-box {
+  padding: 0.65rem 0.95rem;
+  background: rgba(10, 14, 22, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+/* User Profile Header Pill & Dropdown */
+.user-profile-menu-wrap {
+  position: relative;
+}
+
+.btn-user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.32rem 0.85rem 0.32rem 0.45rem;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
+  color: #FFFFFF;
+  cursor: pointer;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-btn);
+  transition: all 0.25s var(--ease-ios);
+}
+
+.btn-user-pill:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--glass-border-hover);
+  transform: translateY(-1px);
+}
+
+.btn-user-pill:active {
+  transform: scale(0.96);
+}
+
+.user-avatar-circle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10B981, #0EA5E9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.user-display-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-caret {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  transition: transform 0.25s var(--ease-ios);
+}
+
+.user-dropdown-glass {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  min-width: 220px;
+  background: rgba(16, 22, 36, 0.92);
+  backdrop-filter: blur(36px) saturate(200%);
+  -webkit-backdrop-filter: blur(36px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 48px -8px rgba(0, 0, 0, 0.75), inset 0 1px 1.5px rgba(255, 255, 255, 0.25);
+  padding: 0.65rem;
+  z-index: 100;
+  animation: dropdownPop 0.25s var(--ease-ios-bounce);
+}
+
+@keyframes dropdownPop {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.user-dropdown-header {
+  padding: 0.5rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.user-dropdown-header strong {
+  font-size: 0.88rem;
+  color: #FFFFFF;
+}
+
+.dropdown-user-email {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-dropdown-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0.45rem 0;
+}
+
+.user-dropdown-item-meta {
+  padding: 0.35rem 0.65rem;
+}
+
+.dropdown-badge-active {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-open);
+}
+
+.user-dropdown-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.user-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.btn-logout {
+  color: #F87171 !important;
+}
+
+.btn-logout:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+}

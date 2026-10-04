@@ -3,10 +3,15 @@
  * Handles custom events, user preferences, presets, and JSON backup/restore.
  */
 
-const STORAGE_KEYS = {
-  EVENTS: 'chronex_events_v1',
-  SETTINGS: 'chronex_settings_v1'
-};
+let currentUserId = null;
+
+function getEventsKey() {
+  return currentUserId ? `chronex_events_user_${currentUserId}` : 'chronex_events_v1';
+}
+
+function getSettingsKey() {
+  return currentUserId ? `chronex_settings_user_${currentUserId}` : 'chronex_settings_v1';
+}
 
 const DEFAULT_SETTINGS = {
   timeFormat: '24', // '24' or '12'
@@ -101,10 +106,26 @@ function getNextUtcTime(utcHour, utcMinute) {
 }
 
 export class StorageManager {
+  static setUserId(userId) {
+    currentUserId = userId || null;
+  }
+
+  static getUserId() {
+    return currentUserId;
+  }
+
   static getEvents() {
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.EVENTS);
+      const key = getEventsKey();
+      const data = localStorage.getItem(key);
       if (!data) {
+        if (currentUserId) {
+          const guestData = localStorage.getItem('chronex_events_v1');
+          if (guestData) {
+            localStorage.setItem(key, guestData);
+            return JSON.parse(guestData);
+          }
+        }
         const presets = createDefaultPresets();
         this.saveEvents(presets);
         return presets;
@@ -119,7 +140,7 @@ export class StorageManager {
 
   static saveEvents(events) {
     try {
-      localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(events));
+      localStorage.setItem(getEventsKey(), JSON.stringify(events));
       return true;
     } catch (e) {
       console.error('Error saving events:', e);
@@ -173,7 +194,7 @@ export class StorageManager {
 
   static getSettings() {
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      const data = localStorage.getItem(getSettingsKey());
       if (!data) {
         this.saveSettings(DEFAULT_SETTINGS);
         return { ...DEFAULT_SETTINGS };
@@ -188,7 +209,7 @@ export class StorageManager {
     try {
       const current = this.getSettings();
       const updated = { ...current, ...settings };
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
+      localStorage.setItem(getSettingsKey(), JSON.stringify(updated));
       return updated;
     } catch (e) {
       console.error('Error saving settings:', e);
