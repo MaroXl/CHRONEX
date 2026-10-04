@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="./css/style.css">
   <link rel="stylesheet" href="./css/sessions.css">
   <link rel="stylesheet" href="./css/countdown.css">
+  <link rel="stylesheet" href="./css/calendar.css">
   <link rel="stylesheet" href="./css/modal.css">
 </head>
 <body>
@@ -176,6 +177,79 @@
       <!-- Session Cards Grid (Sydney, Tokyo, London, New York) -->
       <div class="session-cards-grid" id="session-cards-container">
         <!-- Rendered dynamically by js/sessions.js -->
+      </div>
+    </section>
+
+    <!-- Live Economic Calendar Section (Live Macro & Central Bank Feed) -->
+    <section class="calendar-section" id="calendar-section" aria-labelledby="heading-calendar">
+      <div class="section-header-row">
+        <div class="section-title-wrap">
+          <h2 id="heading-calendar">
+            <span>Live Economic Calendar</span>
+          </h2>
+          <p class="section-desc">Live institutional macroeconomic calendar feed with real-time consensus, prior metrics, and 1-click countdown tracking.</p>
+        </div>
+
+        <div class="calendar-header-status">
+          <div class="calendar-live-status" id="cal-sync-status">
+            <span class="live-dot-green"></span>
+            <span>Connecting feed...</span>
+          </div>
+
+          <button class="btn btn-secondary" id="btn-sync-all-high-impact" title="Pin all high-impact events of the week to dashboard">
+            <span style="color: #F87171;">🔴</span>
+            <span>Sync High-Impact</span>
+          </button>
+
+          <button class="btn btn-secondary" id="btn-refresh-calendar" title="Force refresh live economic feed">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Currency Region Filter Chips -->
+      <div class="calendar-currency-bar">
+        <span class="preset-chip-label">Currency:</span>
+        <button class="currency-chip active" data-currency="all">🌐 All Regions</button>
+        <button class="currency-chip" data-currency="USD">🇺🇸 USD</button>
+        <button class="currency-chip" data-currency="CAD">🇨🇦 CAD</button>
+        <button class="currency-chip" data-currency="GBP">🇬🇧 GBP</button>
+        <button class="currency-chip" data-currency="AUD">🇦🇺 AUD</button>
+        <button class="currency-chip" data-currency="EUR">🇪🇺 EUR</button>
+        <button class="currency-chip" data-currency="JPY">🇯🇵 JPY</button>
+        <button class="currency-chip" data-currency="CNY">🇨🇳 CNY</button>
+      </div>
+
+      <!-- Calendar Toolbar: Impact & Search -->
+      <div class="events-toolbar" style="margin-bottom: 0;">
+        <div class="filter-pills-group" role="tablist" aria-label="Calendar Impact Filter">
+          <button class="filter-btn active" data-cal-impact="all">All Impacts</button>
+          <button class="filter-btn" data-cal-impact="high">🔴 High Only</button>
+          <button class="filter-btn" data-cal-impact="medium">🟡 Medium</button>
+          <button class="filter-btn" data-cal-impact="low">🔵 Low</button>
+        </div>
+
+        <div class="search-sort-group">
+          <div class="search-input-box">
+            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="calendar-search-input" placeholder="Filter economic events..." aria-label="Search calendar">
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Economic Table / Card Shell -->
+      <div class="calendar-table-shell">
+        <div class="calendar-events-feed" id="calendar-events-feed">
+          <!-- Populated dynamically by js/calendar.js -->
+        </div>
       </div>
     </section>
 

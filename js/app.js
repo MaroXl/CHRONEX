@@ -6,6 +6,7 @@
 import { ClockManager } from './clock.js';
 import { sessionTracker } from './sessions.js';
 import { CountdownManager } from './countdown.js';
+import { CalendarManager } from './calendar.js';
 import { StorageManager } from './storage.js';
 import { chronexAudio } from './audio.js';
 
@@ -15,6 +16,7 @@ class ChronexApp {
     this.deferredInstallPrompt = null;
     this.clock = null;
     this.countdown = null;
+    this.calendar = null;
 
     // DOM Elements
     this.dom = {
@@ -22,9 +24,18 @@ class ChronexApp {
       timelineMaster: document.getElementById('timeline-master-container'),
       overlapBanner: document.getElementById('overlap-live-banner'),
       countdownCards: document.getElementById('events-cards-grid'),
-      filterButtons: document.querySelectorAll('.filter-btn'),
+      filterButtons: document.querySelectorAll('.filter-btn:not([data-cal-impact])'),
       searchInput: document.getElementById('event-search-input'),
       sortSelect: document.getElementById('event-sort-select'),
+      // Live Economic Calendar DOM elements
+      calEventsFeed: document.getElementById('calendar-events-feed'),
+      calSyncStatus: document.getElementById('cal-sync-status'),
+      btnRefreshCalendar: document.getElementById('btn-refresh-calendar'),
+      btnSyncAllHighImpact: document.getElementById('btn-sync-all-high-impact'),
+      calCurrencyChips: document.querySelectorAll('.currency-chip'),
+      calImpactButtons: document.querySelectorAll('[data-cal-impact]'),
+      calSearchInput: document.getElementById('calendar-search-input'),
+      // Modals and dialogs
       modalEvent: document.getElementById('modal-event-dialog'),
       formEvent: document.getElementById('form-event-editor'),
       modalTitle: document.getElementById('modal-dialog-title'),
@@ -81,10 +92,22 @@ class ChronexApp {
       new Date()
     );
 
-    // 5. Setup UI Event Listeners
+    // 5. Initialize Live Economic Calendar Feed
+    this.calendar = new CalendarManager({
+      container: this.dom.calEventsFeed,
+      statusEl: this.dom.calSyncStatus,
+      onEventPinned: (title) => {
+        this.countdown.loadEvents();
+        this.countdown.render();
+        this.showToast(`Pinned: ${title}`, 'success');
+      }
+    });
+    this.calendar.init();
+
+    // 6. Setup UI Event Listeners
     this.setupListeners();
 
-    // 6. Setup PWA & Service Worker
+    // 7. Setup PWA & Service Worker
     this.setupPwa();
 
     // Check URL parameters for quick actions
@@ -118,6 +141,7 @@ class ChronexApp {
 
     // Update countdown timers
     this.countdown.tick();
+    this.calendar?.tick();
   }
 
   setupListeners() {
@@ -265,6 +289,52 @@ class ChronexApp {
         this.countdown.events = StorageManager.resetToPresets();
         this.countdown.render();
         this.showToast('Preset market releases restored', 'info');
+      }
+    });
+
+    // Calendar Currency Filter Chips
+    this.dom.calCurrencyChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        this.dom.calCurrencyChips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        const cur = chip.getAttribute('data-currency');
+        this.calendar.setCurrencyFilter(cur);
+        chronexAudio.playChime('click');
+      });
+    });
+
+    // Calendar Impact Filter Buttons
+    this.dom.calImpactButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.dom.calImpactButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const impact = btn.getAttribute('data-cal-impact');
+        this.calendar.setImpactFilter(impact);
+        chronexAudio.playChime('click');
+      });
+    });
+
+    // Calendar Search Input
+    this.dom.calSearchInput?.addEventListener('input', (e) => {
+      this.calendar.setSearch(e.target.value);
+    });
+
+    // Calendar Refresh Button
+    this.dom.btnRefreshCalendar?.addEventListener('click', async () => {
+      chronexAudio.playChime('click');
+      await this.calendar.fetchLiveEvents();
+      this.showToast('Live economic calendar refreshed', 'info');
+    });
+
+    // Sync All High-Impact Button
+    this.dom.btnSyncAllHighImpact?.addEventListener('click', () => {
+      const added = this.calendar.syncAllHighImpact();
+      if (added > 0) {
+        this.countdown.loadEvents();
+        this.countdown.render();
+        this.showToast(`Synced ${added} high-impact releases to dashboard!`, 'success');
+      } else {
+        this.showToast('All high-impact releases are already tracked', 'info');
       }
     });
 
