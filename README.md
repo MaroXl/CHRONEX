@@ -74,7 +74,20 @@ Built strictly with **modern vanilla HTML5, CSS3, and modular ES6 JavaScript**, 
   - Instant live keyword search.
   - Sort by Soonest First, Furthest First, or Highest Impact.
 
-### 6. Persistence & Offline Synthesis
+### 6. Live Economic Calendar API Feed (New)
+- **Real-Time Macroeconomic Integration**:
+  - Live API integration with real upcoming macroeconomic releases, central bank decisions, employment numbers, and inflation data.
+  - Proxy route in `server.js` (`/api/calendar`) with 5-minute memory caching and CORS headers.
+  - Direct CORS fallback for static deployments (Netlify, Vercel, GitHub Pages) and `localStorage` caching for instant offline load.
+- **Key Metrics Display**:
+  - Displays **Prior** and **Consensus (Forecast)** values for each release.
+  - Region & currency flags: 🇺🇸 USD, 🇨🇦 CAD, 🇬🇧 GBP, 🇦🇺 AUD, 🇨🇳 CNY, 🇪🇺 EUR, 🇯🇵 JPY.
+  - Live status indicators: `Synced at XX:XX` and manual **"🔄 Refresh"** trigger.
+- **1-Click Tracking & Batch Synchronization**:
+  - **`+ Track`**: 1-click pins any live market release directly into your custom countdown cards with sound alerts enabled!
+  - **`🔴 Sync High-Impact`**: 1-click batch imports all scheduled high-impact events of the week into your active dashboard.
+
+### 7. Persistence & Offline Synthesis
 - **localStorage Client-Side Persistence**:
   - All custom events, filters, and user settings persist across browser refreshes without requiring an external database.
 - **JSON Backup & Restore**:
@@ -85,7 +98,7 @@ Built strictly with **modern vanilla HTML5, CSS3, and modular ES6 JavaScript**, 
 - **Desktop Notifications**:
   - Optional browser notification permission for background tab alerts.
 
-### 7. Progressive Web App (PWA)
+### 8. Progressive Web App (PWA)
 - `manifest.json`: Standalone app configuration, theme color `#0B0E14`, vector icons.
 - `sw.js` (Service Worker): Cache-first caching strategy for instant startup offline.
 - **In-App "Install App" Button**: Listens to `beforeinstallprompt` to install directly to Windows taskbar or mobile home screen.
@@ -99,17 +112,21 @@ CHRONEX/
 ├── index.html              # Main HTML5 application shell & dialog modals
 ├── manifest.json           # Web App Manifest (standalone, theme, icons)
 ├── sw.js                   # Service Worker (offline cache-first strategy)
+├── server.js               # Node.js dev server & /api/calendar caching proxy
+├── start.bat               # Windows 1-click desktop launcher
 ├── README.md               # Project documentation & usage guide
 ├── css/
 │   ├── style.css           # Design tokens, reset, header, dual clocks, layout
 │   ├── sessions.css        # Market sessions cards, glows, and 24h master timeline
 │   ├── countdown.css       # Event countdown cards, tags, urgency states
+│   ├── calendar.css        # Live economic calendar table, metrics & chips
 │   └── modal.css           # HTML5 <dialog> modal, forms, and inputs
 ├── js/
 │   ├── app.js              # Application orchestrator, PWA install prompt, UI binds
 │   ├── clock.js            # UTC, Local, 12/24h toggle, city timezones
 │   ├── sessions.js         # Midnight wrap-around logic, progress %, overlap engine
 │   ├── countdown.js        # Event countdown math, status triggers, filter & search
+│   ├── calendar.js         # Live economic calendar API client, normalizer & pin engine
 │   ├── storage.js          # LocalStorage CRUD, default presets, JSON export/import
 │   └── audio.js            # Web Audio API sound synthesizer (zero audio assets)
 └── assets/
