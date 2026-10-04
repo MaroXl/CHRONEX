@@ -240,13 +240,19 @@ export class SessionTracker {
   /**
    * Renders the 24h visual timeline master bar and session cards into DOM
    */
+  /**
+   * Renders the 24h visual timeline master bar and session cards into DOM
+   */
   render(containerCards, containerTimeline, bannerOverlap, now = new Date()) {
     const data = this.getAllSessionStates(now);
 
     // Update Overlap Banner
     if (bannerOverlap) {
+      let desiredHtml = '';
+      let isVisible = false;
+
       if (data.overlaps.londonNewYork) {
-        bannerOverlap.innerHTML = `
+        desiredHtml = `
           <div class="overlap-banner-inner active-london-ny">
             <div class="overlap-pill">
               <span class="pulse-amber-dot"></span>
@@ -255,9 +261,9 @@ export class SessionTracker {
             <div class="overlap-desc">Peak Daily Market Liquidity & Maximum Forex / Index Volatility</div>
           </div>
         `;
-        bannerOverlap.classList.remove('hidden');
+        isVisible = true;
       } else if (data.overlaps.tokyoSydney) {
-        bannerOverlap.innerHTML = `
+        desiredHtml = `
           <div class="overlap-banner-inner active-asian">
             <div class="overlap-pill">
               <span class="pulse-cyan-dot"></span>
@@ -266,9 +272,9 @@ export class SessionTracker {
             <div class="overlap-desc">Asian Trading Session Overlap — Primary JPY & AUD/NZD Liquidity</div>
           </div>
         `;
-        bannerOverlap.classList.remove('hidden');
+        isVisible = true;
       } else if (data.overlaps.tokyoLondon) {
-        bannerOverlap.innerHTML = `
+        desiredHtml = `
           <div class="overlap-banner-inner active-eur-asia">
             <div class="overlap-pill">
               <span class="pulse-purple-dot"></span>
@@ -277,75 +283,134 @@ export class SessionTracker {
             <div class="overlap-desc">Early European Open / Asian Close Transition</div>
           </div>
         `;
+        isVisible = true;
+      }
+
+      if (isVisible) {
+        if (bannerOverlap.innerHTML !== desiredHtml) {
+          bannerOverlap.innerHTML = desiredHtml;
+        }
         bannerOverlap.classList.remove('hidden');
       } else {
         bannerOverlap.classList.add('hidden');
       }
     }
 
-    // Render Session Cards
+    // Render or Update Session Cards
     if (containerCards) {
-      containerCards.innerHTML = data.sessions.map(s => {
-        let statusBadgeClass = 'status-closed';
-        let glowClass = '';
-        let badgeLabel = 'CLOSED';
+      const existingCards = containerCards.querySelectorAll('.session-card');
+      if (existingCards.length === data.sessions.length) {
+        // Fast in-place DOM updates (no innerHTML destruction)
+        data.sessions.forEach(s => {
+          const card = containerCards.querySelector(`[data-session="${s.id}"]`);
+          if (!card) return;
 
-        if (s.isOverlap) {
-          statusBadgeClass = 'status-overlap';
-          glowClass = 'card-glow-overlap';
-          badgeLabel = s.overlapTitle || 'OVERLAP';
-        } else if (s.isOpen) {
-          statusBadgeClass = 'status-open';
-          glowClass = 'card-glow-open';
-          badgeLabel = 'OPEN';
-        }
+          let statusBadgeClass = 'status-closed';
+          let glowClass = '';
+          let badgeLabel = 'CLOSED';
 
-        const barFillClass = s.isOverlap ? 'bar-overlap' : (s.isOpen ? 'bar-open' : 'bar-closed');
+          if (s.isOverlap) {
+            statusBadgeClass = 'status-overlap';
+            glowClass = 'card-glow-overlap';
+            badgeLabel = s.overlapTitle || 'OVERLAP';
+          } else if (s.isOpen) {
+            statusBadgeClass = 'status-open';
+            glowClass = 'card-glow-open';
+            badgeLabel = 'OPEN';
+          }
 
-        return `
-          <article class="session-card ${glowClass}" data-session="${s.id}">
-            <header class="session-card-header">
-              <div class="session-identity">
-                <span class="session-flag" aria-hidden="true">${s.flag}</span>
-                <div>
-                  <h3 class="session-name">${s.name}</h3>
-                  <span class="session-market">${s.market} · ${s.currency}</span>
+          card.className = `session-card ${glowClass}`;
+
+          const statusBadge = card.querySelector('.status-badge');
+          if (statusBadge) {
+            statusBadge.className = `status-badge ${statusBadgeClass}`;
+            const textSpan = statusBadge.querySelector('span:last-child');
+            if (textSpan) textSpan.textContent = badgeLabel;
+          }
+
+          const progressLabel = card.querySelector('.progress-label');
+          if (progressLabel) progressLabel.textContent = s.isOpen ? 'Session Elapsed' : 'Cycle to Open';
+
+          const progressPct = card.querySelector('.progress-pct');
+          if (progressPct) progressPct.textContent = `${s.progressPercent.toFixed(1)}%`;
+
+          const barFill = card.querySelector('.session-progress-bar-fill');
+          if (barFill) {
+            const barFillClass = s.isOverlap ? 'bar-overlap' : (s.isOpen ? 'bar-open' : 'bar-closed');
+            barFill.className = `session-progress-bar-fill ${barFillClass}`;
+            barFill.style.width = `${s.progressPercent.toFixed(1)}%`;
+          }
+
+          const countdownContext = card.querySelector('.countdown-context');
+          if (countdownContext) countdownContext.textContent = s.countdownLabel;
+
+          const countdownTime = card.querySelector('.countdown-time');
+          if (countdownTime) countdownTime.textContent = s.countdownStr;
+        });
+      } else {
+        // Initial Full Render
+        containerCards.innerHTML = data.sessions.map(s => {
+          let statusBadgeClass = 'status-closed';
+          let glowClass = '';
+          let badgeLabel = 'CLOSED';
+
+          if (s.isOverlap) {
+            statusBadgeClass = 'status-overlap';
+            glowClass = 'card-glow-overlap';
+            badgeLabel = s.overlapTitle || 'OVERLAP';
+          } else if (s.isOpen) {
+            statusBadgeClass = 'status-open';
+            glowClass = 'card-glow-open';
+            badgeLabel = 'OPEN';
+          }
+
+          const barFillClass = s.isOverlap ? 'bar-overlap' : (s.isOpen ? 'bar-open' : 'bar-closed');
+
+          return `
+            <article class="session-card ${glowClass}" data-session="${s.id}">
+              <header class="session-card-header">
+                <div class="session-identity">
+                  <span class="session-flag" aria-hidden="true">${s.flag}</span>
+                  <div>
+                    <h3 class="session-name">${s.name}</h3>
+                    <span class="session-market">${s.market} · ${s.currency}</span>
+                  </div>
+                </div>
+                <div class="status-badge ${statusBadgeClass}">
+                  <span class="status-dot"></span>
+                  <span>${badgeLabel}</span>
+                </div>
+              </header>
+
+              <div class="session-hours-grid">
+                <div class="hours-block">
+                  <span class="hours-label">HOURS (UTC)</span>
+                  <span class="hours-val mono">${s.openUtc} – ${s.closeUtc}</span>
+                </div>
+                <div class="hours-block text-right">
+                  <span class="hours-label">LOCAL CITY TIME</span>
+                  <span class="hours-val mono" id="card-city-${s.id}">--:--</span>
                 </div>
               </div>
-              <div class="status-badge ${statusBadgeClass}">
-                <span class="status-dot"></span>
-                <span>${badgeLabel}</span>
-              </div>
-            </header>
 
-            <div class="session-hours-grid">
-              <div class="hours-block">
-                <span class="hours-label">HOURS (UTC)</span>
-                <span class="hours-val mono">${s.openUtc} – ${s.closeUtc}</span>
+              <div class="session-progress-wrapper">
+                <div class="session-progress-header">
+                  <span class="progress-label">${s.isOpen ? 'Session Elapsed' : 'Cycle to Open'}</span>
+                  <span class="progress-pct mono">${s.progressPercent.toFixed(1)}%</span>
+                </div>
+                <div class="session-progress-bar-track">
+                  <div class="session-progress-bar-fill ${barFillClass}" style="width: ${s.progressPercent.toFixed(1)}%;"></div>
+                </div>
               </div>
-              <div class="hours-block text-right">
-                <span class="hours-label">LOCAL CITY TIME</span>
-                <span class="hours-val mono" id="card-city-${s.id}">--:--</span>
-              </div>
-            </div>
 
-            <div class="session-progress-wrapper">
-              <div class="session-progress-header">
-                <span class="progress-label">${s.isOpen ? 'Session Elapsed' : 'Cycle to Open'}</span>
-                <span class="progress-pct mono">${s.progressPercent.toFixed(1)}%</span>
-              </div>
-              <div class="session-progress-bar-track">
-                <div class="session-progress-bar-fill ${barFillClass}" style="width: ${s.progressPercent.toFixed(1)}%;"></div>
-              </div>
-            </div>
-
-            <footer class="session-card-footer">
-              <span class="countdown-context">${s.countdownLabel}</span>
-              <span class="countdown-time mono">${s.countdownStr}</span>
-            </footer>
-          </article>
-        `;
-      }).join('');
+              <footer class="session-card-footer">
+                <span class="countdown-context">${s.countdownLabel}</span>
+                <span class="countdown-time mono">${s.countdownStr}</span>
+              </footer>
+            </article>
+          `;
+        }).join('');
+      }
     }
 
     // Render Master 24h Timeline
@@ -359,7 +424,19 @@ export class SessionTracker {
    */
   renderMasterTimeline(container, data) {
     const { currentUtcMinutes, utcPercent } = data;
+    const curHour = Math.floor(currentUtcMinutes / 60).toString().padStart(2, '0');
+    const curMin = Math.floor(currentUtcMinutes % 60).toString().padStart(2, '0');
 
+    // If needle already exists, perform instant CSS transform update
+    const needle = container.querySelector('.timeline-current-needle');
+    if (needle) {
+      needle.style.left = `${utcPercent.toFixed(2)}%`;
+      const timeSpan = needle.querySelector('.needle-time');
+      if (timeSpan) timeSpan.textContent = `${curHour}:${curMin} UTC`;
+      return;
+    }
+
+    // Initial Full Render
     const getPosPct = (mins) => ((mins / 1440) * 100).toFixed(2);
 
     let labelsHtml = data.sessions.map(s => `
@@ -372,7 +449,6 @@ export class SessionTracker {
     let tracksHtml = data.sessions.map(s => {
       let segmentsHtml = '';
       if (s.crossesMidnight) {
-        // Sydney has two segments: [1320, 1440] and [0, 420]
         const seg1Left = getPosPct(s.openMinutes);
         const seg1Width = getPosPct(1440 - s.openMinutes);
         const seg2Left = 0;
@@ -398,16 +474,10 @@ export class SessionTracker {
     }).join('');
 
     // Overlap zones
-    // London/NY: 13:30 (810) to 16:30 (990) -> left: 56.25%, width: 12.5%
     const lnyLeft = getPosPct(810);
     const lnyWidth = getPosPct(180);
-
-    // Sydney/Tokyo: 00:00 (0) to 07:00 (420) -> left: 0%, width: 29.17%
     const stLeft = 0;
     const stWidth = getPosPct(420);
-
-    const curHour = Math.floor(currentUtcMinutes / 60).toString().padStart(2, '0');
-    const curMin = Math.floor(currentUtcMinutes % 60).toString().padStart(2, '0');
 
     container.innerHTML = `
       <div class="timeline-master-shell">

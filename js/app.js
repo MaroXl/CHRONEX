@@ -61,87 +61,105 @@ class ChronexApp {
   }
 
   init() {
-    // 1. Audio setting
-    chronexAudio.enabled = this.settings.soundEnabled;
-    this.updateAudioButtonState();
+    try {
+      // 1. Audio setting
+      chronexAudio.enabled = this.settings.soundEnabled;
+      this.updateAudioButtonState();
 
-    // 2. Initialize Clocks
-    this.clock = new ClockManager({
-      timeFormat: this.settings.timeFormat,
-      onTick: (tickData) => this.handleClockTick(tickData)
-    });
-    this.clock.start();
-    this.updateTimeFormatButtonState();
+      // 2. Initialize Countdowns first so tick handlers can find it
+      this.countdown = new CountdownManager({
+        container: this.dom.countdownCards,
+        onEdit: (eventObj) => this.openEditModal(eventObj),
+        onDelete: (id) => this.showToast('Event removed', 'info')
+      });
+      this.countdown.loadEvents();
+      this.countdown.setFilter(this.settings.activeFilter || 'all');
+      this.countdown.setSort(this.settings.sortBy || 'soonest');
+      this.countdown.render();
+      this.updateActiveFilterButtons();
 
-    // 3. Initialize Countdowns
-    this.countdown = new CountdownManager({
-      container: this.dom.countdownCards,
-      onEdit: (eventObj) => this.openEditModal(eventObj),
-      onDelete: (id) => this.showToast('Event removed', 'info')
-    });
-    this.countdown.loadEvents();
-    this.countdown.setFilter(this.settings.activeFilter || 'all');
-    this.countdown.setSort(this.settings.sortBy || 'soonest');
-    this.updateActiveFilterButtons();
+      // 3. Initialize Live Economic Calendar Feed
+      this.calendar = new CalendarManager({
+        container: this.dom.calEventsFeed,
+        statusEl: this.dom.calSyncStatus,
+        onEventPinned: (title) => {
+          this.countdown.loadEvents();
+          this.countdown.render();
+          this.showToast(`Pinned: ${title}`, 'success');
+        }
+      });
+      this.calendar.init();
 
-    // 4. Initial Render of Market Sessions & Master Timeline
-    sessionTracker.render(
-      this.dom.sessionCards,
-      this.dom.timelineMaster,
-      this.dom.overlapBanner,
-      new Date()
-    );
-
-    // 5. Initialize Live Economic Calendar Feed
-    this.calendar = new CalendarManager({
-      container: this.dom.calEventsFeed,
-      statusEl: this.dom.calSyncStatus,
-      onEventPinned: (title) => {
-        this.countdown.loadEvents();
-        this.countdown.render();
-        this.showToast(`Pinned: ${title}`, 'success');
+      // 4. Initial Render of Market Sessions & Master Timeline
+      if (this.dom.sessionCards && this.dom.timelineMaster) {
+        sessionTracker.render(
+          this.dom.sessionCards,
+          this.dom.timelineMaster,
+          this.dom.overlapBanner,
+          new Date()
+        );
       }
-    });
-    this.calendar.init();
 
-    // 6. Setup UI Event Listeners
-    this.setupListeners();
+      // 5. Setup UI Event Listeners
+      this.setupListeners();
 
-    // 7. Setup PWA & Service Worker
-    this.setupPwa();
+      // 6. Setup PWA & Service Worker
+      this.setupPwa();
 
-    // Check URL parameters for quick actions
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('action') === 'add-event') {
-      this.openAddModal();
+      // 7. Initialize Clocks and start tick timer last
+      this.clock = new ClockManager({
+        timeFormat: this.settings.timeFormat,
+        onTick: (tickData) => this.handleClockTick(tickData)
+      });
+      this.clock.start();
+      this.updateTimeFormatButtonState();
+
+      // Check URL parameters for quick actions
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('action') === 'add-event') {
+        this.openAddModal();
+      }
+
+      console.log('[Chronex] Core modules initialized successfully');
+    } catch (e) {
+      console.error('[Chronex] Init failure:', e);
     }
   }
 
   handleClockTick(tickData) {
-    const now = tickData.now;
+    if (!tickData) return;
+    const now = tickData.now || new Date();
 
     // Update market sessions, progress bars, and master timeline
-    sessionTracker.render(
-      this.dom.sessionCards,
-      this.dom.timelineMaster,
-      this.dom.overlapBanner,
-      now
-    );
+    if (this.dom.sessionCards && this.dom.timelineMaster) {
+      sessionTracker.render(
+        this.dom.sessionCards,
+        this.dom.timelineMaster,
+        this.dom.overlapBanner,
+        now
+      );
+    }
 
     // Update city times on the session cards
-    const sydneyCityTime = document.getElementById('card-city-sydney');
-    const tokyoCityTime = document.getElementById('card-city-tokyo');
-    const londonCityTime = document.getElementById('card-city-london');
-    const newYorkCityTime = document.getElementById('card-city-new-york');
+    if (tickData.cityTimes) {
+      const sydneyCityTime = document.getElementById('card-city-sydney');
+      const tokyoCityTime = document.getElementById('card-city-tokyo');
+      const londonCityTime = document.getElementById('card-city-london');
+      const newYorkCityTime = document.getElementById('card-city-new-york');
 
-    if (sydneyCityTime) sydneyCityTime.textContent = tickData.cityTimes.sydney;
-    if (tokyoCityTime) tokyoCityTime.textContent = tickData.cityTimes.tokyo;
-    if (londonCityTime) londonCityTime.textContent = tickData.cityTimes.london;
-    if (newYorkCityTime) newYorkCityTime.textContent = tickData.cityTimes.newYork;
+      if (sydneyCityTime) sydneyCityTime.textContent = tickData.cityTimes.sydney || '--:--';
+      if (tokyoCityTime) tokyoCityTime.textContent = tickData.cityTimes.tokyo || '--:--';
+      if (londonCityTime) londonCityTime.textContent = tickData.cityTimes.london || '--:--';
+      if (newYorkCityTime) newYorkCityTime.textContent = tickData.cityTimes.newYork || '--:--';
+    }
 
-    // Update countdown timers
-    this.countdown.tick();
-    this.calendar?.tick();
+    // Update countdown timers safely
+    if (this.countdown) {
+      this.countdown.tick();
+    }
+    if (this.calendar) {
+      this.calendar.tick();
+    }
   }
 
   setupListeners() {
@@ -554,9 +572,21 @@ class ChronexApp {
   }
 }
 
-// Start application when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  const app = new ChronexApp();
-  app.init();
-  window.chronexApp = app;
-});
+// Robust startup: works whether DOM is loading, interactive, or complete
+function launchChronex() {
+  try {
+    const app = new ChronexApp();
+    app.init();
+    window.chronexApp = app;
+    console.log('[Chronex] Application loaded and running');
+  } catch (err) {
+    console.error('[Chronex] Critical startup error:', err);
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', launchChronex);
+} else {
+  // DOM is already parsed (modules are deferred by default)
+  launchChronex();
+}
