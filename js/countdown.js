@@ -3,8 +3,8 @@
  * High-precision countdown timers, live status triggers, tagging, and filtering.
  */
 
-import { StorageManager } from './storage.js';
-import { chronexAudio } from './audio.js';
+import { StorageManager } from './storage.js?v=2.1.0';
+import { chronexAudio } from './audio.js?v=2.1.0';
 
 export class CountdownManager {
   constructor(options = {}) {

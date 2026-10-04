@@ -3,12 +3,12 @@
  * Connects Clocks, Market Sessions, Countdown Timers, Storage, and PWA logic.
  */
 
-import { ClockManager } from './clock.js';
-import { sessionTracker } from './sessions.js';
-import { CountdownManager } from './countdown.js';
-import { CalendarManager } from './calendar.js';
-import { StorageManager } from './storage.js';
-import { chronexAudio } from './audio.js';
+import { ClockManager } from './clock.js?v=2.1.0';
+import { sessionTracker } from './sessions.js?v=2.1.0';
+import { CountdownManager } from './countdown.js?v=2.1.0';
+import { CalendarManager } from './calendar.js?v=2.1.0';
+import { StorageManager } from './storage.js?v=2.1.0';
+import { chronexAudio } from './audio.js?v=2.1.0';
 
 class ChronexApp {
   constructor() {
@@ -528,15 +528,22 @@ class ChronexApp {
   setupPwa() {
     // Register Service Worker
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
+      const registerSW = () => {
         navigator.serviceWorker.register('./sw.js')
           .then((registration) => {
             console.log('[Chronex PWA] ServiceWorker registered with scope:', registration.scope);
+            registration.update();
           })
           .catch((error) => {
             console.warn('[Chronex PWA] ServiceWorker registration failed:', error);
           });
-      });
+      };
+
+      if (document.readyState === 'complete') {
+        registerSW();
+      } else {
+        window.addEventListener('load', registerSW);
+      }
     }
 
     // Capture beforeinstallprompt for standalone install button

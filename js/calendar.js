@@ -4,8 +4,8 @@
  * impact badges, and 1-click "Pin to Countdowns" synchronization.
  */
 
-import { StorageManager } from './storage.js';
-import { chronexAudio } from './audio.js';
+import { StorageManager } from './storage.js?v=2.1.0';
+import { chronexAudio } from './audio.js?v=2.1.0';
 
 const CALENDAR_CACHE_KEY = 'chronex_live_calendar_cache_v1';
 

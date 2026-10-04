@@ -126,12 +126,10 @@ const server = http.createServer(async (req, res) => {
     const ext = path.extname(fullPath).toLowerCase();
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
-    // Service Worker should not be aggressively cached
-    if (safePath === '/sw.js') {
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    } else {
-      res.setHeader('Cache-Control', 'public, max-age=3600');
-    }
+    // Disable caching for development & preview server so changes apply immediately
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
 
     res.writeHead(200, { 'Content-Type': contentType });
     const stream = fs.createReadStream(fullPath);
