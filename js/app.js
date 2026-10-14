@@ -3,13 +3,13 @@
  * Connects Clocks, Market Sessions, Countdown Timers, Storage, and PWA logic.
  */
 
-import { ClockManager } from './clock.js?v=2.1.0';
-import { sessionTracker } from './sessions.js?v=2.1.0';
-import { CountdownManager } from './countdown.js?v=2.1.0';
-import { CalendarManager } from './calendar.js?v=2.1.0';
-import { StorageManager } from './storage.js?v=2.1.0';
-import { chronexAudio } from './audio.js?v=2.1.0';
-import { authManager } from './auth.js?v=2.2.0';
+import { ClockManager } from './clock.js?v=2.5.0';
+import { sessionTracker } from './sessions.js?v=2.5.0';
+import { CountdownManager } from './countdown.js?v=2.5.0';
+import { CalendarManager } from './calendar.js?v=2.5.0';
+import { StorageManager } from './storage.js?v=2.5.0';
+import { chronexAudio } from './audio.js?v=2.5.0';
+import { authManager, dispatchApi } from './auth.js?v=2.5.0';
 
 class ChronexApp {
   constructor() {
@@ -78,6 +78,8 @@ class ChronexApp {
       formAuthLogin: document.getElementById('form-auth-login'),
       inputLoginEmail: document.getElementById('input-login-email'),
       inputLoginPassword: document.getElementById('input-login-password'),
+      loginAccountHint: document.getElementById('login-account-hint'),
+      rememberedEmailsList: document.getElementById('remembered-emails-list'),
       btnToggleLoginPw: document.getElementById('btn-toggle-login-pw'),
       btnGotoForgot: document.getElementById('btn-goto-forgot'),
       btnCancelAuthLogin: document.getElementById('btn-cancel-auth-login'),
@@ -102,7 +104,34 @@ class ChronexApp {
       inputForgotNewPw: document.getElementById('input-forgot-newpw'),
       btnToggleForgotPw: document.getElementById('btn-toggle-forgot-pw'),
       btnForgotBackLogin: document.getElementById('btn-forgot-back-login'),
-      btnSubmitResetPw: document.getElementById('btn-submit-reset-pw')
+      btnSubmitResetPw: document.getElementById('btn-submit-reset-pw'),
+      // Mobile Navigation & Drawer Elements
+      hamburgerBtn: document.getElementById('btn-hamburger-menu'),
+      mobileNavDrawer: document.getElementById('mobile-nav-drawer'),
+      mobileDrawerBackdrop: document.getElementById('mobile-drawer-backdrop'),
+      btnCloseMobileDrawer: document.getElementById('btn-close-mobile-drawer'),
+      btnMobileQuickAdd: document.getElementById('btn-mobile-quick-add'),
+      btnMobileFabAdd: document.getElementById('btn-mobile-fab-add'),
+      drawerAuthGuest: document.getElementById('drawer-auth-guest'),
+      drawerAuthUser: document.getElementById('drawer-auth-user'),
+      btnDrawerLogin: document.getElementById('btn-drawer-login'),
+      btnDrawerLogout: document.getElementById('btn-drawer-logout'),
+      drawerAvatarInitials: document.getElementById('drawer-avatar-initials'),
+      drawerUserName: document.getElementById('drawer-user-name'),
+      drawerUserEmail: document.getElementById('drawer-user-email'),
+      btnDrawerAddEvent: document.getElementById('btn-drawer-add-event'),
+      btnDrawerToggleFormat: document.getElementById('btn-drawer-toggle-time-format'),
+      drawerTimeFormatPill: document.getElementById('drawer-time-format-pill'),
+      btnDrawerToggleSound: document.getElementById('btn-drawer-toggle-sound'),
+      drawerSoundPill: document.getElementById('drawer-sound-pill'),
+      btnDrawerNotifications: document.getElementById('btn-drawer-notifications'),
+      drawerNotifPill: document.getElementById('drawer-notif-pill'),
+      btnDrawerInstallPwa: document.getElementById('btn-drawer-install-pwa'),
+      drawerNavLinks: document.querySelectorAll('[data-drawer-nav]'),
+      btnDrawerExportBackup: document.getElementById('btn-drawer-export-backup'),
+      btnDrawerImportBackup: document.getElementById('btn-drawer-import-backup'),
+      btnDrawerRestoreDefaults: document.getElementById('btn-drawer-restore-defaults'),
+      drawerBackendStatus: document.getElementById('drawer-backend-status')
     };
   }
 
@@ -163,6 +192,12 @@ class ChronexApp {
       });
       this.clock.start();
       this.updateTimeFormatButtonState();
+
+      // 8. Setup Mobile Drawer and Mobile Terminal Listeners
+      this.setupMobileDrawerListeners();
+
+      // 9. Start background server synchronization & workload polling
+      this.startDashboardPolling();
 
       // Check URL parameters for quick actions
       const urlParams = new URLSearchParams(window.location.search);
@@ -450,6 +485,11 @@ class ChronexApp {
       this.togglePwVisibility(this.dom.inputForgotNewPw, this.dom.btnToggleForgotPw);
     });
 
+    // Email typing live recognition badge
+    this.dom.inputLoginEmail?.addEventListener('input', () => {
+      this.updateLoginAccountBadge(this.dom.inputLoginEmail.value);
+    });
+
     // Form: Sign In
     this.dom.formAuthLogin?.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -463,6 +503,7 @@ class ChronexApp {
           submitBtn.textContent = 'Signing in...';
         }
         const user = await authManager.logIn(email, password);
+        if (this.dom.inputLoginPassword) this.dom.inputLoginPassword.value = '';
         this.closeAuthModal();
         this.showToast(`Welcome back, ${user.name}!`, 'success');
         chronexAudio.playChime('click');
@@ -499,6 +540,8 @@ class ChronexApp {
           securityQuestion,
           securityAnswer
         });
+        if (this.dom.inputLoginEmail) this.dom.inputLoginEmail.value = email;
+        if (this.dom.inputLoginPassword) this.dom.inputLoginPassword.value = '';
         this.closeAuthModal();
         this.showToast(`Account created! Welcome, ${user.name}!`, 'success');
         chronexAudio.playChime('click');
@@ -590,8 +633,17 @@ class ChronexApp {
 
     // Logout Action
     this.dom.btnLogout?.addEventListener('click', () => {
+      const activeUser = authManager.getCurrentUser();
+      const lastEmail = activeUser ? activeUser.email : authManager.getLastLoginEmail();
       authManager.logOut();
-      this.showToast('Logged out. Your account and custom events remain safely preserved.', 'info');
+      if (this.dom.inputLoginEmail && lastEmail) {
+        this.dom.inputLoginEmail.value = lastEmail;
+      }
+      if (this.dom.inputLoginPassword) {
+        this.dom.inputLoginPassword.value = '';
+      }
+      this.updateLoginAccountBadge(lastEmail);
+      this.showToast('Logged out. Your account remains permanently saved on this device.', 'info');
       chronexAudio.playChime('click');
     });
   }
@@ -601,6 +653,7 @@ class ChronexApp {
       // User is logged in: scope StorageManager to this user ID
       StorageManager.setUserId(user.id);
 
+      // Desktop Profile Pill
       if (this.dom.btnOpenAuth) this.dom.btnOpenAuth.classList.add('hidden');
       if (this.dom.userProfileWrap) this.dom.userProfileWrap.classList.remove('hidden');
 
@@ -610,6 +663,13 @@ class ChronexApp {
       if (this.dom.dropdownUserName) this.dom.dropdownUserName.textContent = user.name || 'Trader';
       if (this.dom.dropdownUserEmail) this.dom.dropdownUserEmail.textContent = user.email || '';
 
+      // Mobile Drawer Profile Card
+      if (this.dom.drawerAuthGuest) this.dom.drawerAuthGuest.classList.add('hidden');
+      if (this.dom.drawerAuthUser) this.dom.drawerAuthUser.classList.remove('hidden');
+      if (this.dom.drawerAvatarInitials) this.dom.drawerAvatarInitials.textContent = initials;
+      if (this.dom.drawerUserName) this.dom.drawerUserName.textContent = user.name || 'Trader';
+      if (this.dom.drawerUserEmail) this.dom.drawerUserEmail.textContent = user.email || '';
+
       if (this.countdown) {
         this.countdown.loadEvents();
         this.countdown.render();
@@ -618,9 +678,14 @@ class ChronexApp {
       // Guest / Logged out
       StorageManager.setUserId(null);
 
+      // Desktop Profile Pill
       if (this.dom.btnOpenAuth) this.dom.btnOpenAuth.classList.remove('hidden');
       if (this.dom.userProfileWrap) this.dom.userProfileWrap.classList.add('hidden');
       if (this.dom.userDropdownGlass) this.dom.userDropdownGlass.classList.add('hidden');
+
+      // Mobile Drawer Profile Card
+      if (this.dom.drawerAuthGuest) this.dom.drawerAuthGuest.classList.remove('hidden');
+      if (this.dom.drawerAuthUser) this.dom.drawerAuthUser.classList.add('hidden');
 
       if (this.countdown) {
         this.countdown.loadEvents();
@@ -667,14 +732,60 @@ class ChronexApp {
     if (this.dom.formAuthSignup) this.dom.formAuthSignup.classList.toggle('hidden', !isSignup);
     if (this.dom.formAuthForgot) this.dom.formAuthForgot.classList.toggle('hidden', !isForgot);
 
+    // Populate datalist with all remembered accounts on this device
+    if (this.dom.rememberedEmailsList) {
+      const accounts = authManager.getRememberedAccounts();
+      this.dom.rememberedEmailsList.innerHTML = accounts
+        .map((a) => `<option value="${a.email}">${a.name ? `${a.name} (${a.email})` : a.email}</option>`)
+        .join('');
+    }
+
     if (isLogin && this.dom.inputLoginEmail) {
-      setTimeout(() => this.dom.inputLoginEmail.focus(), 50);
+      const lastEmail = authManager.getLastLoginEmail();
+      if (lastEmail) {
+        this.dom.inputLoginEmail.value = lastEmail;
+      }
+      this.updateLoginAccountBadge(this.dom.inputLoginEmail.value);
+
+      setTimeout(() => {
+        if (this.dom.inputLoginEmail.value && this.dom.inputLoginPassword) {
+          this.dom.inputLoginPassword.focus();
+        } else {
+          this.dom.inputLoginEmail.focus();
+        }
+      }, 50);
     } else if (isSignup && this.dom.inputSignupName) {
+      // Pre-fill email in signup if user already typed one in login
+      if (this.dom.inputLoginEmail?.value && !this.dom.inputSignupEmail?.value) {
+        this.dom.inputSignupEmail.value = this.dom.inputLoginEmail.value;
+      }
       setTimeout(() => this.dom.inputSignupName.focus(), 50);
     } else if (isForgot && this.dom.inputForgotEmail) {
+      if (this.dom.inputLoginEmail?.value) {
+        this.dom.inputForgotEmail.value = this.dom.inputLoginEmail.value;
+      }
       if (this.dom.forgotStep2) this.dom.forgotStep2.classList.add('hidden');
       if (this.dom.btnSubmitResetPw) this.dom.btnSubmitResetPw.classList.add('hidden');
       setTimeout(() => this.dom.inputForgotEmail.focus(), 50);
+    }
+  }
+
+  updateLoginAccountBadge(email) {
+    if (!this.dom.loginAccountHint) return;
+    const norm = (email || '').trim().toLowerCase();
+    if (!norm) {
+      this.dom.loginAccountHint.classList.add('hidden');
+      this.dom.loginAccountHint.textContent = '';
+      return;
+    }
+    const accounts = authManager.getRememberedAccounts();
+    const match = accounts.find((a) => a.email.toLowerCase() === norm);
+    if (match) {
+      this.dom.loginAccountHint.textContent = `✓ Recognized account: ${match.name || 'Trader'}`;
+      this.dom.loginAccountHint.classList.remove('hidden');
+    } else {
+      this.dom.loginAccountHint.classList.add('hidden');
+      this.dom.loginAccountHint.textContent = '';
     }
   }
 
@@ -807,28 +918,35 @@ class ChronexApp {
   }
 
   updateTimeFormatButtonState() {
+    const fmt = `${this.clock.timeFormat}H`;
     if (this.dom.btnToggleFormat) {
       this.dom.btnToggleFormat.innerHTML = `
         <span class="btn-icon">⏱</span>
-        <span>Format: ${this.clock.timeFormat}H</span>
+        <span>Format: ${fmt}</span>
       `;
+    }
+    if (this.dom.drawerTimeFormatPill) {
+      this.dom.drawerTimeFormatPill.textContent = fmt;
     }
   }
 
   updateAudioButtonState() {
+    const isMuted = !chronexAudio.enabled;
     if (this.dom.btnToggleAudio) {
-      const isMuted = !chronexAudio.enabled;
       this.dom.btnToggleAudio.innerHTML = isMuted 
         ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg><span>Sound Off</span>`
         : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg><span>Sound On</span>`;
-      
       this.dom.btnToggleAudio.classList.toggle('btn-muted', isMuted);
+    }
+    if (this.dom.drawerSoundPill) {
+      this.dom.drawerSoundPill.textContent = isMuted ? 'MUTED' : 'ON';
     }
   }
 
   updateNotificationButtonState() {
+    const isGranted = ('Notification' in window) && Notification.permission === 'granted';
     if (this.dom.btnRequestNotifications && 'Notification' in window) {
-      if (Notification.permission === 'granted') {
+      if (isGranted) {
         this.dom.btnRequestNotifications.innerHTML = `
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
           <span>Alerts Active</span>
@@ -841,6 +959,9 @@ class ChronexApp {
         `;
         this.dom.btnRequestNotifications.classList.remove('btn-active');
       }
+    }
+    if (this.dom.drawerNotifPill) {
+      this.dom.drawerNotifPill.textContent = isGranted ? 'Active' : 'Enable';
     }
   }
 
@@ -892,6 +1013,9 @@ class ChronexApp {
       if (this.dom.btnInstallPwa) {
         this.dom.btnInstallPwa.classList.remove('hidden');
       }
+      if (this.dom.btnDrawerInstallPwa) {
+        this.dom.btnDrawerInstallPwa.classList.remove('hidden');
+      }
     });
 
     this.dom.btnInstallPwa?.addEventListener('click', async () => {
@@ -901,12 +1025,14 @@ class ChronexApp {
       console.log(`[Chronex PWA] User install response: ${outcome}`);
       this.deferredInstallPrompt = null;
       this.dom.btnInstallPwa.classList.add('hidden');
+      this.dom.btnDrawerInstallPwa?.classList.add('hidden');
     });
 
     window.addEventListener('appinstalled', () => {
       console.log('[CHRONEX PWA] Successfully installed!');
       this.showToast('CHRONEX installed as an app!', 'success');
       this.dom.btnInstallPwa?.classList.add('hidden');
+      this.dom.btnDrawerInstallPwa?.classList.add('hidden');
     });
 
     // Check if running as standalone PWA
@@ -914,7 +1040,246 @@ class ChronexApp {
       if (this.dom.btnInstallPwa) {
         this.dom.btnInstallPwa.classList.add('hidden');
       }
+      if (this.dom.btnDrawerInstallPwa) {
+        this.dom.btnDrawerInstallPwa.classList.add('hidden');
+      }
     }
+  }
+
+  // ==========================================================================
+  // Mobile Hamburger & Slide-In Navigation Drawer System
+  // ==========================================================================
+  setupMobileDrawerListeners() {
+    // 1. Hamburger button toggle
+    this.dom.hamburgerBtn?.addEventListener('click', () => {
+      this.toggleMobileDrawer();
+    });
+
+    // 2. Close button in drawer header
+    this.dom.btnCloseMobileDrawer?.addEventListener('click', () => {
+      this.closeMobileDrawer();
+    });
+
+    // 3. Backdrop tap to dismiss
+    this.dom.mobileDrawerBackdrop?.addEventListener('click', () => {
+      this.closeMobileDrawer();
+    });
+
+    // 4. Escape key closes drawer
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.isMobileDrawerOpen()) {
+        this.closeMobileDrawer();
+      }
+    });
+
+    // 5. Touch swipe to dismiss drawer
+    let touchStartX = 0;
+    this.dom.mobileNavDrawer?.addEventListener('touchstart', (e) => {
+      if (e.changedTouches && e.changedTouches[0]) {
+        touchStartX = e.changedTouches[0].clientX;
+      }
+    }, { passive: true });
+
+    this.dom.mobileNavDrawer?.addEventListener('touchend', (e) => {
+      if (e.changedTouches && e.changedTouches[0]) {
+        const touchEndX = e.changedTouches[0].clientX;
+        // Swiped right by > 50px
+        if (touchEndX - touchStartX > 50) {
+          this.closeMobileDrawer();
+        }
+      }
+    }, { passive: true });
+
+    // 6. Mobile Quick Add (+) button and Mobile FAB button
+    this.dom.btnMobileQuickAdd?.addEventListener('click', () => {
+      chronexAudio.playChime('click');
+      this.openAddModal();
+    });
+
+    this.dom.btnMobileFabAdd?.addEventListener('click', () => {
+      chronexAudio.playChime('click');
+      this.openAddModal();
+    });
+
+    // 7. Drawer Primary Add Event button
+    this.dom.btnDrawerAddEvent?.addEventListener('click', () => {
+      this.closeMobileDrawer();
+      this.openAddModal();
+    });
+
+    // 8. Drawer Time Format toggle
+    this.dom.btnDrawerToggleFormat?.addEventListener('click', () => {
+      const newFormat = this.clock.toggleTimeFormat();
+      this.settings.timeFormat = newFormat;
+      StorageManager.saveSettings({ timeFormat: newFormat });
+      this.updateTimeFormatButtonState();
+      chronexAudio.playChime('click');
+      this.showToast(`Switched to ${newFormat}-hour format`, 'info');
+    });
+
+    // 9. Drawer Audio toggle
+    this.dom.btnDrawerToggleSound?.addEventListener('click', () => {
+      const enabled = chronexAudio.toggle();
+      this.settings.soundEnabled = enabled;
+      StorageManager.saveSettings({ soundEnabled: enabled });
+      this.updateAudioButtonState();
+      this.showToast(`Audio alerts ${enabled ? 'enabled' : 'muted'}`, 'info');
+    });
+
+    // 10. Drawer Notifications toggle
+    this.dom.btnDrawerNotifications?.addEventListener('click', async () => {
+      if (!('Notification' in window)) {
+        this.showToast('Browser notifications not supported.', 'warning');
+        return;
+      }
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          this.settings.notificationsEnabled = true;
+          StorageManager.saveSettings({ notificationsEnabled: true });
+          this.updateNotificationButtonState();
+          this.showToast('Notifications enabled!', 'success');
+        } else {
+          this.showToast('Notifications permission denied', 'warning');
+        }
+      } catch (err) {
+        console.error('Notification error:', err);
+      }
+    });
+
+    // 11. Drawer Navigation Jump Links (smooth scroll + close drawer)
+    this.dom.drawerNavLinks?.forEach((link) => {
+      link.addEventListener('click', (e) => {
+        const targetId = link.getAttribute('href');
+        if (targetId && targetId.startsWith('#')) {
+          e.preventDefault();
+          this.closeMobileDrawer();
+          const targetEl = document.querySelector(targetId);
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      });
+    });
+
+    // 12. Drawer Auth buttons
+    this.dom.btnDrawerLogin?.addEventListener('click', () => {
+      this.closeMobileDrawer();
+      this.openAuthModal('login');
+    });
+
+    this.dom.btnDrawerLogout?.addEventListener('click', () => {
+      const activeUser = authManager.getCurrentUser();
+      const lastEmail = activeUser ? activeUser.email : authManager.getLastLoginEmail();
+      this.closeMobileDrawer();
+      authManager.logOut();
+      if (this.dom.inputLoginEmail && lastEmail) {
+        this.dom.inputLoginEmail.value = lastEmail;
+      }
+      if (this.dom.inputLoginPassword) {
+        this.dom.inputLoginPassword.value = '';
+      }
+      this.updateLoginAccountBadge(lastEmail);
+      this.showToast('Logged out. Your account remains permanently saved on this device.', 'info');
+    });
+
+    // 13. Drawer Backup / Restore buttons
+    this.dom.btnDrawerExportBackup?.addEventListener('click', () => {
+      StorageManager.exportBackup();
+      this.showToast('Exported backup file', 'success');
+    });
+
+    this.dom.btnDrawerImportBackup?.addEventListener('click', () => {
+      this.closeMobileDrawer();
+      this.dom.fileImportInput?.click();
+    });
+
+    this.dom.btnDrawerRestoreDefaults?.addEventListener('click', () => {
+      if (confirm('Restore preset releases?')) {
+        this.countdown.events = StorageManager.resetToPresets();
+        this.countdown.render();
+        this.showToast('Presets restored', 'info');
+      }
+    });
+
+    // 14. Drawer Install PWA button
+    this.dom.btnDrawerInstallPwa?.addEventListener('click', () => {
+      if (this.deferredInstallPrompt) {
+        this.dom.btnInstallPwa?.click();
+      } else {
+        this.showToast('To install, use browser menu: Add to Home Screen', 'info');
+      }
+    });
+  }
+
+  isMobileDrawerOpen() {
+    return this.dom.mobileNavDrawer?.classList.contains('is-open');
+  }
+
+  toggleMobileDrawer() {
+    if (this.isMobileDrawerOpen()) {
+      this.closeMobileDrawer();
+    } else {
+      this.openMobileDrawer();
+    }
+  }
+
+  openMobileDrawer() {
+    chronexAudio.playChime('click');
+    this.dom.hamburgerBtn?.classList.add('is-active');
+    this.dom.hamburgerBtn?.setAttribute('aria-expanded', 'true');
+    this.dom.mobileNavDrawer?.classList.add('is-open');
+    this.dom.mobileNavDrawer?.setAttribute('aria-hidden', 'false');
+    this.dom.mobileDrawerBackdrop?.classList.add('is-open');
+
+    // Accessibility inert on main
+    const mainEl = document.querySelector('main');
+    if (mainEl) mainEl.inert = true;
+
+    // Sync state indicators
+    this.updateTimeFormatButtonState();
+    this.updateAudioButtonState();
+    this.updateNotificationButtonState();
+  }
+
+  closeMobileDrawer() {
+    this.dom.hamburgerBtn?.classList.remove('is-active');
+    this.dom.hamburgerBtn?.setAttribute('aria-expanded', 'false');
+    this.dom.mobileNavDrawer?.classList.remove('is-open');
+    this.dom.mobileNavDrawer?.setAttribute('aria-hidden', 'true');
+    this.dom.mobileDrawerBackdrop?.classList.remove('is-open');
+
+    const mainEl = document.querySelector('main');
+    if (mainEl) mainEl.inert = false;
+  }
+
+  // ==========================================================================
+  // Backend Workload Sharing & Dashboard Polling Engine
+  // ==========================================================================
+  startDashboardPolling() {
+    // Initial background sync of events
+    StorageManager.syncWithServer().then((syncedEvents) => {
+      if (syncedEvents && this.countdown) {
+        this.countdown.loadEvents();
+        this.countdown.render();
+      }
+    }).catch(() => {});
+
+    // Periodic lightweight summary polling every 35 seconds
+    setInterval(async () => {
+      try {
+        const apiResult = await dispatchApi('/api/dashboard-summary');
+        if (apiResult.isJson && apiResult.ok) {
+          if (this.dom.drawerBackendStatus) {
+            this.dom.drawerBackendStatus.textContent = 'Backend Engine Active · Fast Mode';
+          }
+        }
+      } catch (e) {
+        if (this.dom.drawerBackendStatus) {
+          this.dom.drawerBackendStatus.textContent = 'Offline / Local Terminal Mode';
+        }
+      }
+    }, 35000);
   }
 }
 

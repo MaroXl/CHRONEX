@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="theme-color" content="#0B0E14">
+  <meta name="description" content="CHRONEX">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CHRONEX">
+
+  <title>CHRONEX</title>
+
+  <!-- PWA Manifest & Icons -->
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/svg+xml" href="./assets/icons/favicon.svg">
+  <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png">
+
+  <!-- Typography: JetBrains Mono (zero digit flicker) & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="./css/style.css?v=2.5.0">
+  <link rel="stylesheet" href="./css/sessions.css?v=2.5.0">
+  <link rel="stylesheet" href="./css/countdown.css?v=2.5.0">
+  <link rel="stylesheet" href="./css/calendar.css?v=2.5.0">
+  <link rel="stylesheet" href="./css/modal.css?v=2.5.0">
+
+  <!-- Instant Cache Invalidator & SW Updater -->
+  <script>
+    if ('caches' in window) {
+      caches.keys().then(keys => {
+        keys.forEach(k => {
+          if (k !== 'chronex-v2.5.0' && k !== 'chronex-fonts') {
+            caches.delete(k);
+          }
+        });
+      });
+    }
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        for (const reg of regs) {
+          reg.update();
+        }
+      });
+    }
+  </script>
+</head>
+<body>
+
+  <!-- iOS Liquid Glass Ambient Background Mesh -->
+  <div class="liquid-bg" aria-hidden="true">
+    <div class="liquid-orb orb-1"></div>
+    <div class="liquid-orb orb-2"></div>
+    <div class="liquid-orb orb-3"></div>
+    <div class="liquid-orb orb-4"></div>
+  </div>
+
+  <!-- Top App Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-wrapper">
+        <div class="brand-icon-box">
+          <img src="./assets/icons/icon.svg" alt="CHRONEX Logo" width="36" height="36">
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">CHRONEX</h1>
+        </div>
+      </div>
+
+      <nav class="header-actions" aria-label="Dashboard Controls">
+        <!-- 12h / 24h Toggle -->
+        <button class="btn btn-secondary" id="btn-toggle-time-format" title="Toggle 12h or 24h format" aria-label="Toggle Time Format">
+          <span class="btn-icon">⏱</span>
+          <span>Format: 24H</span>
+        </button>
+
+        <!-- Sound Alert Toggle -->
+        <button class="btn btn-secondary" id="btn-toggle-sound" title="Toggle chime alerts" aria-label="Toggle Sound">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <span>Sound On</span>
+        </button>
+
+        <!-- Desktop Notifications Request -->
+        <button class="btn btn-secondary" id="btn-notifications-permission" title="Enable browser alerts for countdown completion" aria-label="Notifications">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span>Enable Alerts</span>
+        </button>
+
+        <!-- PWA Install Button (Shown when install prompt is available) -->
+        <button class="btn btn-install hidden" id="btn-install-pwa" title="Install Chronex as Desktop / Mobile App" aria-label="Install App">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Install App</span>
+        </button>
+
+        <!-- Auth Button (Shown when guest / logged out) -->
+        <button class="btn btn-secondary" id="btn-open-auth-modal" title="Sign In or Create Account" aria-label="Sign In">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span>Sign In</span>
+        </button>
+
+        <!-- User Profile Pill & Dropdown (Shown when logged in) -->
+        <div class="user-profile-menu-wrap hidden" id="user-profile-menu-wrap">
+          <button class="btn-user-pill" id="btn-user-profile-pill" aria-expanded="false" aria-haspopup="true" title="User Profile & Settings">
+            <span class="user-avatar-circle" id="user-avatar-initials">U</span>
+            <span class="user-display-name" id="user-display-name">User</span>
+            <span class="user-caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="user-dropdown-glass hidden" id="user-dropdown-glass" role="menu">
+            <div class="user-dropdown-header">
+              <strong id="dropdown-user-name">User Name</strong>
+              <span class="dropdown-user-email mono" id="dropdown-user-email">user@chronex.app</span>
+            </div>
+            <div class="user-dropdown-divider"></div>
+            <div class="user-dropdown-item-meta">
+              <span class="dropdown-badge-active">● Active Cloud Account</span>
+            </div>
+            <div class="user-dropdown-divider"></div>
+            <button class="user-dropdown-item btn-logout" id="btn-action-logout" role="menuitem">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              <span>Log Out</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Add Event Primary Button -->
+        <button class="btn btn-primary" id="btn-open-add-modal">
+          <span style="font-size: 1.1rem; line-height: 1;">+</span>
+          <span>Add Event</span>
+        </button>
+      </nav>
+
+      <!-- Mobile Header Actions (Visible on screens <= 860px) -->
+      <div class="mobile-header-actions" aria-label="Mobile Navigation Controls">
+        <button class="btn btn-primary btn-mobile-quick-add" id="btn-mobile-quick-add" title="Quick Add Countdown" aria-label="Quick Add Event">
+          <span>+</span>
+        </button>
+        <button class="hamburger-btn" id="btn-hamburger-menu" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-nav-drawer">
+          <span class="hamburger-box">
+            <span class="hamburger-line line-1"></span>
+            <span class="hamburger-line line-2"></span>
+            <span class="hamburger-line line-3"></span>
+          </span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Application Body -->
+  <main class="app-main">
+
+    <!-- Live Universal & Local Clocks -->
+    <section class="clocks-overview-grid" aria-label="Live Synchronized Clocks">
+      <!-- Universal Time (UTC) -->
+      <div class="clock-card clock-card-utc">
+        <div class="clock-header">
+          <div class="clock-type-label">
+            <span class="live-indicator" aria-hidden="true"></span>
+            <span>Universal Time Coordinated</span>
+          </div>
+          <span class="clock-tz-badge mono">UTC / GMT+0</span>
+        </div>
+        <div class="clock-time-display mono" id="utc-live-time">--:--:--</div>
+        <div class="clock-date-display" id="utc-live-date">Loading date...</div>
+      </div>
+
+      <!-- Local Time -->
+      <div class="clock-card clock-card-local">
+        <div class="clock-header">
+          <div class="clock-type-label">
+            <span class="live-indicator" style="background-color: #38BDF8; box-shadow: 0 0 8px #38BDF8;" aria-hidden="true"></span>
+            <span>Your Local Time</span>
+          </div>
+          <span class="clock-tz-badge mono" id="local-tz-label">Detecting timezone...</span>
+        </div>
+        <div class="clock-time-display mono" id="local-live-time">--:--:--</div>
+        <div class="clock-date-display" id="local-live-date">Loading date...</div>
+      </div>
+
+      <!-- City Mini Tickers -->
+      <div class="city-tickers-strip">
+        <div class="city-ticker-item">
+          <div class="city-meta">
+            <span class="city-flag">🇦🇺</span>
+            <span class="city-title">Sydney</span>
+          </div>
+          <span class="city-clock-val mono" id="city-time-sydney">--:--</span>
+        </div>
+        <div class="city-ticker-item">
+          <div class="city-meta">
+            <span class="city-flag">🇯🇵</span>
+            <span class="city-title">Tokyo</span>
+          </div>
+          <span class="city-clock-val mono" id="city-time-tokyo">--:--</span>
+        </div>
+        <div class="city-ticker-item">
+          <div class="city-meta">
+            <span class="city-flag">🇬🇧</span>
+            <span class="city-title">London</span>
+          </div>
+          <span class="city-clock-val mono" id="city-time-london">--:--</span>
+        </div>
+        <div class="city-ticker-item">
+          <div class="city-meta">
+            <span class="city-flag">🇺🇸</span>
+            <span class="city-title">New York</span>
+          </div>
+          <span class="city-clock-val mono" id="city-time-newYork">--:--</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Market Sessions Section -->
+    <section class="sessions-section" id="sessions-section" aria-labelledby="heading-sessions">
+      <div class="section-header-row">
+        <div class="section-title-wrap">
+          <h2 id="heading-sessions">
+            <span>Global Market Sessions</span>
+          </h2>
+          <p class="section-desc">Active trading sessions calculated in UTC with automated overlap and liquidity window tracking.</p>
+        </div>
+      </div>
+
+      <!-- Overlap Announcement Banner (Auto-rendered if active) -->
+      <div class="overlap-live-banner hidden" id="overlap-live-banner"></div>
+
+      <!-- Master 24-Hour Visual Progress Bar / Timeline -->
+      <div class="timeline-master-wrapper">
+        <div class="section-title-wrap" style="margin-bottom: 1rem;">
+          <h3 style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF;">24-Hour Global Progress Bar (UTC)</h3>
+          <span style="font-size: 0.76rem; color: var(--text-muted);">Current UTC position across continuous session spans and liquidity overlaps</span>
+        </div>
+        <div id="timeline-master-container"></div>
+      </div>
+
+      <!-- Session Cards Grid (Sydney, Tokyo, London, New York) -->
+      <div class="session-cards-grid" id="session-cards-container">
+        <!-- Rendered dynamically by js/sessions.js -->
+      </div>
+    </section>
+
+    <!-- Live Economic Calendar Section (Live Macro & Central Bank Feed) -->
+    <section class="calendar-section" id="calendar-section" aria-labelledby="heading-calendar">
+      <div class="section-header-row">
+        <div class="section-title-wrap">
+          <h2 id="heading-calendar">
+            <span>Live Economic Calendar</span>
+          </h2>
+          <p class="section-desc">Live institutional macroeconomic calendar feed with real-time consensus, prior metrics, and 1-click countdown tracking.</p>
+        </div>
+
+        <div class="calendar-header-status">
+          <div class="calendar-live-status" id="cal-sync-status">
+            <span class="live-dot-green"></span>
+            <span>Connecting feed...</span>
+          </div>
+
+          <button class="btn btn-secondary" id="btn-sync-all-high-impact" title="Pin all high-impact events of the week to dashboard">
+            <span style="color: #F87171;">🔴</span>
+            <span>Sync High-Impact</span>
+          </button>
+
+          <button class="btn btn-secondary" id="btn-refresh-calendar" title="Force refresh live economic feed">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Currency Region Filter Chips -->
+      <div class="calendar-currency-bar">
+        <span class="preset-chip-label">Currency:</span>
+        <button class="currency-chip active" data-currency="all">🌐 All Regions</button>
+        <button class="currency-chip" data-currency="USD">🇺🇸 USD</button>
+        <button class="currency-chip" data-currency="CAD">🇨🇦 CAD</button>
+        <button class="currency-chip" data-currency="GBP">🇬🇧 GBP</button>
+        <button class="currency-chip" data-currency="AUD">🇦🇺 AUD</button>
+        <button class="currency-chip" data-currency="EUR">🇪🇺 EUR</button>
+        <button class="currency-chip" data-currency="JPY">🇯🇵 JPY</button>
+        <button class="currency-chip" data-currency="CNY">🇨🇳 CNY</button>
+      </div>
+
+      <!-- Calendar Toolbar: Impact & Search -->
+      <div class="events-toolbar" style="margin-bottom: 0;">
+        <div class="filter-pills-group" role="tablist" aria-label="Calendar Impact Filter">
+          <button class="filter-btn active" data-cal-impact="all">All Impacts</button>
+          <button class="filter-btn" data-cal-impact="high">🔴 High Only</button>
+          <button class="filter-btn" data-cal-impact="medium">🟡 Medium</button>
+          <button class="filter-btn" data-cal-impact="low">🔵 Low</button>
+        </div>
+
+        <div class="search-sort-group">
+          <div class="search-input-box">
+            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="calendar-search-input" placeholder="Filter economic events..." aria-label="Search calendar">
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Economic Table / Card Shell -->
+      <div class="calendar-table-shell">
+        <div class="calendar-events-feed" id="calendar-events-feed">
+          <!-- Populated dynamically by js/calendar.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Custom Event & News Release Countdown Section -->
+    <section class="countdowns-section" id="countdowns-section" aria-labelledby="heading-countdowns">
+      <div class="section-header-row">
+        <div class="section-title-wrap">
+          <h2 id="heading-countdowns">
+            <span>Economic Releases & Custom Countdowns</span>
+          </h2>
+          <p class="section-desc">Real-time precision timers for high-impact financial data releases, central bank decisions, and personal deadlines.</p>
+        </div>
+      </div>
+
+      <!-- Quick Preset Adder Chips -->
+      <div class="presets-chip-bar">
+        <span class="preset-chip-label">Quick Presets:</span>
+        <button class="preset-chip" data-title="US CPI Release" data-impact="high" data-cat="financial" data-hours="3.5">+ US CPI (3.5h)</button>
+        <button class="preset-chip" data-title="FOMC Rate Decision" data-impact="high" data-cat="financial" data-hours="24">+ FOMC Rate (24h)</button>
+        <button class="preset-chip" data-title="London / NY Session Open" data-impact="high" data-cat="financial" data-hours="8">+ London/NY Open</button>
+        <button class="preset-chip" data-title="Non-Farm Payrolls (NFP)" data-impact="high" data-cat="financial" data-hours="72">+ US NFP</button>
+        <button class="preset-chip" data-title="Academic Project Defense" data-impact="high" data-cat="academic" data-hours="48">+ Academic Defense</button>
+      </div>
+
+      <!-- Toolbar: Filters, Search, and Sort -->
+      <div class="events-toolbar">
+        <div class="filter-pills-group" role="tablist" aria-label="Event Category Filter">
+          <button class="filter-btn active" data-filter="all">All Events</button>
+          <button class="filter-btn" data-filter="high">High Impact</button>
+          <button class="filter-btn" data-filter="medium">Medium</button>
+          <button class="filter-btn" data-filter="low">Low</button>
+          <button class="filter-btn" data-filter="financial">Financial</button>
+          <button class="filter-btn" data-filter="academic">Academic</button>
+        </div>
+
+        <div class="search-sort-group">
+          <div class="search-input-box">
+            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="event-search-input" placeholder="Search releases..." aria-label="Search events">
+          </div>
+
+          <select class="sort-select" id="event-sort-select" aria-label="Sort events by">
+            <option value="soonest">Sort: Soonest First</option>
+            <option value="latest">Sort: Furthest First</option>
+            <option value="impact">Sort: Highest Impact</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Cards Grid -->
+      <div class="events-cards-grid" id="events-cards-grid">
+        <!-- Rendered dynamically by js/countdown.js -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Add / Edit Event HTML5 <dialog> Modal -->
+  <dialog class="modal-dialog" id="modal-event-dialog" aria-labelledby="modal-dialog-title">
+    <div class="modal-header">
+      <h3 id="modal-dialog-title">Add Countdown Event</h3>
+      <button class="btn-icon-ghost" id="btn-close-modal" aria-label="Close dialog">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <form id="form-event-editor">
+      <input type="hidden" id="input-event-id" value="">
+
+      <div class="form-body">
+        <div class="form-group">
+          <label for="input-event-title">Event Title <span class="required-star">*</span></label>
+          <input type="text" id="input-event-title" class="form-input" placeholder="e.g. US CPI Release, FOMC Meeting, Project Due" required>
+        </div>
+
+        <div class="form-group">
+          <label for="input-event-datetime">Target Date & Local Time <span class="required-star">*</span></label>
+          <input type="datetime-local" id="input-event-datetime" class="form-input mono" required>
+          <span class="form-hint">Time is entered in your local timezone and automatically synced with UTC.</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="input-event-impact">Impact Level</label>
+            <select id="input-event-impact" class="form-select">
+              <option value="high">🔴 High Impact</option>
+              <option value="medium" selected>🟡 Medium Impact</option>
+              <option value="low">🔵 Low Impact</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="input-event-category">Category</label>
+            <select id="input-event-category" class="form-select">
+              <option value="financial" selected>📈 Financial / Economic</option>
+              <option value="academic">🎓 Academic / Education</option>
+              <option value="personal">💼 Project / Personal</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="input-event-notes">Notes / Details (Optional)</label>
+          <textarea id="input-event-notes" class="form-textarea" placeholder="Expected forecast, currency pairs affected, or submission link..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-save-modal">Save Event</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Authentication Modal (Sign In, Create Account, Forgot Password) -->
+  <dialog class="modal-dialog modal-auth" id="modal-auth-dialog">
+    <div class="modal-header">
+      <div class="auth-tabs" id="auth-tabs-bar" role="tablist">
+        <button type="button" class="auth-tab-btn active" id="tab-auth-login" role="tab" aria-selected="true">Sign In</button>
+        <button type="button" class="auth-tab-btn" id="tab-auth-signup" role="tab" aria-selected="false">Create Account</button>
+      </div>
+      <button type="button" class="btn-close-modal" id="btn-close-auth-modal" aria-label="Close modal">✕</button>
+    </div>
+
+    <!-- Alert / Status Banner -->
+    <div class="auth-alert-banner hidden" id="auth-alert-banner" role="alert"></div>
+
+    <!-- 1. Log In Form -->
+    <form id="form-auth-login" class="auth-view" autocomplete="on">
+      <div class="form-body">
+        <div class="form-group">
+          <label for="input-login-email">Email Address <span class="required-star">*</span></label>
+          <input type="email" id="input-login-email" class="form-input" placeholder="trader@example.com" autocomplete="username email" list="remembered-emails-list" required>
+          <datalist id="remembered-emails-list"></datalist>
+          <div class="remembered-account-hint hidden" id="login-account-hint"></div>
+        </div>
+
+        <div class="form-group">
+          <div class="label-with-action">
+            <label for="input-login-password">Password <span class="required-star">*</span></label>
+            <button type="button" class="link-btn" id="btn-goto-forgot">Forgot Password?</button>
+          </div>
+          <div class="password-input-wrap">
+            <input type="password" id="input-login-password" class="form-input" placeholder="Enter your password" autocomplete="current-password" required>
+            <button type="button" class="btn-toggle-pw" id="btn-toggle-login-pw" title="Show / Hide Password" aria-label="Toggle password visibility">👁</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-auth-login">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-login">Sign In</button>
+      </div>
+
+      <div class="auth-switch-prompt">
+        <span>Don't have a Chronex account?</span>
+        <button type="button" class="link-btn" id="btn-switch-to-signup">Create one</button>
+      </div>
+    </form>
+
+    <!-- 2. Sign Up Form -->
+    <form id="form-auth-signup" class="auth-view hidden" autocomplete="on">
+      <div class="form-body">
+        <div class="form-group">
+          <label for="input-signup-name">Your Full Name <span class="required-star">*</span></label>
+          <input type="text" id="input-signup-name" class="form-input" placeholder="e.g. Alex Morgan" autocomplete="name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="input-signup-email">Email Address <span class="required-star">*</span></label>
+          <input type="email" id="input-signup-email" class="form-input" placeholder="alex@example.com" autocomplete="email" required>
+        </div>
+
+        <div class="form-group">
+          <label for="input-signup-password">Password (min 6 characters) <span class="required-star">*</span></label>
+          <div class="password-input-wrap">
+            <input type="password" id="input-signup-password" class="form-input" placeholder="Create a secure password" minlength="6" autocomplete="new-password" required>
+            <button type="button" class="btn-toggle-pw" id="btn-toggle-signup-pw" title="Show / Hide Password" aria-label="Toggle password visibility">👁</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="input-signup-question">Security Question (For Account Recovery) <span class="required-star">*</span></label>
+          <select id="input-signup-question" class="form-select" required>
+            <option value="What is your primary trading market or city?" selected>What is your primary trading market or city?</option>
+            <option value="What was the name of your first mentor or school?">What was the name of your first mentor or school?</option>
+            <option value="What is your favorite financial asset or ticker?">What is your favorite financial asset or ticker?</option>
+            <option value="In what city were you born?">In what city were you born?</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="input-signup-answer">Security Answer <span class="required-star">*</span></label>
+          <input type="text" id="input-signup-answer" class="form-input" placeholder="Answer to your security question" required>
+          <span class="form-hint">Remember this answer. It is used to securely verify you if you ever forget your password.</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-auth-signup">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-signup">Create Account</button>
+      </div>
+
+      <div class="auth-switch-prompt">
+        <span>Already have an account?</span>
+        <button type="button" class="link-btn" id="btn-switch-to-login">Sign in</button>
+      </div>
+    </form>
+
+    <!-- 3. Forgot Password Form -->
+    <form id="form-auth-forgot" class="auth-view hidden" autocomplete="off">
+      <div class="form-body">
+        <div class="forgot-instructions">
+          Enter your registered email address to locate your account and verify your security answer to set a new password.
+        </div>
+
+        <div class="form-group" id="forgot-step-1">
+          <label for="input-forgot-email">Account Email <span class="required-star">*</span></label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="email" id="input-forgot-email" class="form-input" placeholder="Enter registered email" required style="flex: 1;">
+            <button type="button" class="btn btn-secondary" id="btn-forgot-find-account">Find</button>
+          </div>
+        </div>
+
+        <!-- Step 2: Display Question & New Password fields -->
+        <div id="forgot-step-2" class="hidden" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 0.5rem;">
+          <div class="form-group">
+            <label>Security Question</label>
+            <div class="security-question-box" id="forgot-question-text">Loading question...</div>
+          </div>
+
+          <div class="form-group">
+            <label for="input-forgot-answer">Your Security Answer <span class="required-star">*</span></label>
+            <input type="text" id="input-forgot-answer" class="form-input" placeholder="Enter your registered answer">
+          </div>
+
+          <div class="form-group">
+            <label for="input-forgot-newpw">New Password (min 6 characters) <span class="required-star">*</span></label>
+            <div class="password-input-wrap">
+              <input type="password" id="input-forgot-newpw" class="form-input" placeholder="Enter new password" minlength="6">
+              <button type="button" class="btn-toggle-pw" id="btn-toggle-forgot-pw" title="Show / Hide Password" aria-label="Toggle password visibility">👁</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-forgot-back-login">Back to Sign In</button>
+        <button type="submit" class="btn btn-primary hidden" id="btn-submit-reset-pw">Reset Password</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Hidden file input for JSON import -->
+  <input type="file" id="input-import-file" accept=".json" style="display: none;">
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <!-- App Footer -->
+  <footer class="app-footer">
+    <div class="footer-inner">
+      <div>
+        <strong>CHRONEX</strong>
+      </div>
+      <div class="footer-meta">
+        <button class="footer-btn-link" id="btn-export-backup">Export Backup (JSON)</button>
+        <span>·</span>
+        <button class="footer-btn-link" id="btn-import-backup-trigger">Import Backup</button>
+        <span>·</span>
+        <button class="footer-btn-link" id="btn-reset-defaults">Restore Presets</button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Mobile Navigation Drawer Overlay & Sheet -->
+  <div class="mobile-drawer-backdrop" id="mobile-drawer-backdrop" aria-hidden="true"></div>
+  <aside class="mobile-nav-drawer" id="mobile-nav-drawer" aria-label="Mobile Navigation Menu" aria-hidden="true">
+    <div class="mobile-drawer-header">
+      <div class="brand-wrapper">
+        <div class="brand-icon-box">
+          <img src="./assets/icons/icon.svg" alt="CHRONEX Logo" width="28" height="28">
+        </div>
+        <div class="brand-text">
+          <span class="drawer-brand-title">CHRONEX</span>
+          <span class="drawer-brand-sub">Mobile Terminal</span>
+        </div>
+      </div>
+      <button class="btn-icon-ghost drawer-close-btn" id="btn-close-mobile-drawer" aria-label="Close menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="mobile-drawer-body">
+      <!-- User Profile / Auth Card -->
+      <div class="drawer-user-card" id="drawer-user-card">
+        <!-- If logged out / Guest mode -->
+        <div class="drawer-auth-guest" id="drawer-auth-guest">
+          <div class="drawer-guest-info">
+            <span class="drawer-guest-avatar">👤</span>
+            <div>
+              <strong>Guest Trader</strong>
+              <span>Local Storage Mode</span>
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-drawer-login">Sign In / Sync</button>
+        </div>
+        <!-- If logged in -->
+        <div class="drawer-auth-user hidden" id="drawer-auth-user">
+          <div class="drawer-user-info">
+            <span class="user-avatar-circle" id="drawer-avatar-initials">U</span>
+            <div class="drawer-user-meta">
+              <strong id="drawer-user-name">User Name</strong>
+              <span class="mono" id="drawer-user-email">user@chronex.app</span>
+              <span class="cloud-sync-badge">● Cloud Sync Active</span>
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-drawer-logout">Log Out</button>
+        </div>
+      </div>
+
+      <!-- Primary Action: Add Event CTA -->
+      <button class="btn btn-primary drawer-add-btn" id="btn-drawer-add-event">
+        <span style="font-size: 1.2rem; line-height: 1;">+</span>
+        <span>Add Countdown Event</span>
+      </button>
+
+      <!-- Quick Toggles Section -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">Terminal Settings</div>
+        <div class="drawer-toggles-list">
+          <button class="drawer-toggle-row" id="btn-drawer-toggle-time-format">
+            <div class="toggle-row-left">
+              <span class="toggle-icon">⏱</span>
+              <span>Time Format</span>
+            </div>
+            <span class="toggle-val-pill mono" id="drawer-time-format-pill">24H</span>
+          </button>
+
+          <button class="drawer-toggle-row" id="btn-drawer-toggle-sound">
+            <div class="toggle-row-left">
+              <span class="toggle-icon">🔔</span>
+              <span>Audio Chimes</span>
+            </div>
+            <span class="toggle-val-pill" id="drawer-sound-pill">ON</span>
+          </button>
+
+          <button class="drawer-toggle-row" id="btn-drawer-notifications">
+            <div class="toggle-row-left">
+              <span class="toggle-icon">📢</span>
+              <span>Browser Alerts</span>
+            </div>
+            <span class="toggle-val-pill" id="drawer-notif-pill">Enable</span>
+          </button>
+
+          <button class="drawer-toggle-row hidden" id="btn-drawer-install-pwa">
+            <div class="toggle-row-left">
+              <span class="toggle-icon">📲</span>
+              <span>Install PWA</span>
+            </div>
+            <span class="toggle-val-pill">Install</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Section Jump Links -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">Jump to Section</div>
+        <nav class="drawer-nav-links">
+          <a href="#clocks-overview-grid" class="drawer-nav-item" data-drawer-nav>
+            <span class="nav-item-icon">🕒</span>
+            <span>Universal & Local Clocks</span>
+            <span class="nav-item-arrow">→</span>
+          </a>
+          <a href="#sessions-section" class="drawer-nav-item" data-drawer-nav>
+            <span class="nav-item-icon">🌐</span>
+            <span>Market Sessions</span>
+            <span class="nav-item-arrow">→</span>
+          </a>
+          <a href="#timeline-master-container" class="drawer-nav-item" data-drawer-nav>
+            <span class="nav-item-icon">📊</span>
+            <span>24-Hour Timeline</span>
+            <span class="nav-item-arrow">→</span>
+          </a>
+          <a href="#calendar-section" class="drawer-nav-item" data-drawer-nav>
+            <span class="nav-item-icon">📰</span>
+            <span>Live Economic Calendar</span>
+            <span class="nav-item-arrow">→</span>
+          </a>
+          <a href="#countdowns-section" class="drawer-nav-item" data-drawer-nav>
+            <span class="nav-item-icon">⏳</span>
+            <span>Countdowns & Releases</span>
+            <span class="nav-item-arrow">→</span>
+          </a>
+        </nav>
+      </div>
+
+      <!-- Data Backup & Reset Actions -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">Data Management</div>
+        <div class="drawer-meta-actions">
+          <button class="btn btn-secondary btn-sm" id="btn-drawer-export-backup">💾 Export Backup</button>
+          <button class="btn btn-secondary btn-sm" id="btn-drawer-import-backup">📥 Import Backup</button>
+          <button class="btn btn-secondary btn-sm" id="btn-drawer-restore-defaults">🔄 Restore Presets</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drawer Footer -->
+    <div class="mobile-drawer-footer">
+      <div class="drawer-status-line">
+        <span class="live-dot-green"></span>
+        <span id="drawer-backend-status">Backend Engine Active · Fast Mode</span>
+      </div>
+      <span class="drawer-ver mono">CHRONEX v2.4.0</span>
+    </div>
+  </aside>
+
+  <!-- Mobile Floating Action Button (FAB) -->
+  <button class="mobile-fab-add" id="btn-mobile-fab-add" title="Add Countdown Event" aria-label="Add Event">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <line x1="12" y1="5" x2="12" y2="19"></line>
+      <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+  </button>
+
+  <!-- Application Script (ES Module) -->
+  <script type="module" src="./js/app.js?v=2.5.0"></script>
+</body>
+</html>

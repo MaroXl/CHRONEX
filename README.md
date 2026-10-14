@@ -2,10 +2,13 @@
 
 > **Live Global Market Session Tracker · 24-Hour Visual Timeline · Synchronized UTC & Local Clocks · High-Impact Release Countdowns · Offline Progressive Web App (PWA)**
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Online%20%E2%86%92-0284C7.svg?style=for-the-badge)](https://maroxl.github.io/CHRONEX/)
 [![PWA Ready](https://img.shields.io/badge/PWA-Ready-10B981.svg?style=flat-square)](https://web.dev/progressive-web-apps/)
 [![Zero Dependencies](https://img.shields.io/badge/Dependencies-Zero-38BDF8.svg?style=flat-square)](#architecture)
 [![Vanilla JS](https://img.shields.io/badge/Tech-Vanilla%20ES6%2B-F59E0B.svg?style=flat-square)](#architecture)
-[![Storage](https://img.shields.io/badge/Storage-localStorage-8B5CF6.svg?style=flat-square)](#persistence)
+[![Storage](https://img.shields.io/badge/Storage-Quad--Vault%20DB-8B5CF6.svg?style=flat-square)](#persistence)
+
+🌐 **Public Live Link**: **[https://maroxl.github.io/CHRONEX/](https://maroxl.github.io/CHRONEX/)**
 
 ---
 
@@ -98,9 +101,48 @@ Built strictly with **modern vanilla HTML5, CSS3, and modular ES6 JavaScript**, 
 - **Desktop Notifications**:
   - Optional browser notification permission for background tab alerts.
 
-### 8. Progressive Web App (PWA)
+### 8. Mobile Terminal & Hamburger Drawer Navigation
+- **Space-Efficient Mobile View**:
+  - Automatically switches on mobile and tablet screens (`<= 860px`), replacing cluttered desktop horizontal navigation with a sleek iOS Liquid Glass hamburger button.
+- **Animated 3-Bar to 'X' Hamburger Transition**:
+  - Tactile spring physics transition (`cubic-bezier(0.22, 1, 0.36, 1)`) with full accessibility (`aria-expanded`, `aria-controls`, `aria-label`).
+- **Slide-In Glass Navigation Sheet**:
+  - Floating slide-in sheet (`backdrop-filter: blur(40px) saturate(220%)`) with swipe-to-dismiss gesture, backdrop overlay click dismiss, and Escape key dismissal.
+  - Contains user account profile card, terminal settings (Time Format, Audio Chimes, Browser Alerts, PWA Install), quick section jump links, and backup tools.
+- **Mobile Quick-Add (+) Button & Mobile Floating Action Button (FAB)**:
+  - Ergonomic thumb access for instant countdown creation anywhere on the screen.
+- **Touch-Optimized Responsive Views**:
+  - Fluid countdown cards down to 320px screens, horizontally swipeable currency filter chip bars with touch momentum, and safe area padding (`env(safe-area-inset-bottom)`).
+
+### 9. High-Performance Backend Workload Engine
+- **Server-Side Market Sessions Computation (`/api/market-sessions`)**:
+  - Offloads timeline math, overlap detection, midnight wrap-around logic, and countdown strings to the Node.js backend to reduce client CPU consumption and eliminate browser lag.
+- **Server-Side Calendar Normalization & Query Filtering (`/api/calendar`)**:
+  - Ingestion, 5-minute memory caching, country/flag tagging, impact mapping, and instant search/currency filtering executed directly on the server.
+- **Cloud Events Persistence & Sync Engine (`/api/events`)**:
+  - Persistent JSON event storage (`data/events.json`) with batch synchronization (`/api/events/sync`) and RESTful CRUD endpoints.
+- **Unified Dashboard Summary Route (`/api/dashboard-summary`)**:
+  - Aggregates server time, active sessions, current overlap state, and nearest upcoming catalyst into a single lightweight ~500 byte payload.
+- **Zero-Lag DOM Updates**:
+  - Calendar timers throttled to 30s bucket resolution with selective DOM mutations, eliminating micro-stutters and layout thrashing.
+
+### 10. Persistent User Accounts & Dual-Vault Authentication
+- **Permanent Backend Storage (`data/users.json`)**:
+  - User accounts are stored permanently on disk on the Node backend with cryptographic salted SHA-256 hashes. Once an account is created, you never need to create a new one — your account is permanently saved and ready for sign-in anytime.
+- **Client-Side Mirror Vault (`localStorage`)**:
+  - Accounts and active sessions are mirrored locally for instantaneous startup and offline PWA capability.
+- **Bi-directional Account Synchronization (`/api/auth/sync-vault`)**:
+  - Offline-created accounts automatically synchronize into the backend database once connected.
+- **Zero-Crash API Communication**:
+  - Protected response parser guarantees zero `Unexpected end of JSON input` errors by verifying body streams before JSON evaluation.
+- **Dynamic Port & Origin Discovery**:
+  - Automatically bridges between local static preview servers (e.g. VS Code Live Server on port 5500) and the Node.js backend server on port 3000.
+- **Secure Password Reset**:
+  - Account recovery via personalized security questions and answers (`/api/auth/forgot-password/reset`).
+
+### 11. Progressive Web App (PWA)
 - `manifest.json`: Standalone app configuration, theme color `#0B0E14`, vector icons.
-- `sw.js` (Service Worker): Cache-first caching strategy for instant startup offline.
+- `sw.js` (Service Worker v2.4.1): Cache-first caching strategy for instant startup offline, with automatic bypass for dynamic `/api/` routes.
 - **In-App "Install App" Button**: Listens to `beforeinstallprompt` to install directly to Windows taskbar or mobile home screen.
 
 ---

@@ -1,7 +1,10 @@
 /**
  * Chronex Storage Management
- * Handles custom events, user preferences, presets, and JSON backup/restore.
+ * Handles custom events, user preferences, presets, JSON backup/restore,
+ * and high-speed asynchronous Cloud Sync with the Chronex Node.js Backend.
  */
+
+import { dispatchApi } from './auth.js?v=2.5.0';
 
 let currentUserId = null;
 
@@ -160,8 +163,12 @@ export class StorageManager {
       notified: false,
       createdAt: Date.now()
     };
-    events.push(newEvent);
+    events.unshift(newEvent);
     this.saveEvents(events);
+
+    // Asynchronous background cloud persistence (zero main-thread blocking)
+    this.syncEventToBackend(newEvent);
+
     return newEvent;
   }
 
@@ -176,6 +183,10 @@ export class StorageManager {
       targetDate: updatedFields.targetDate ? new Date(updatedFields.targetDate).toISOString() : events[index].targetDate
     };
     this.saveEvents(events);
+
+    // Asynchronous backend update
+    this.updateEventOnBackend(id, events[index]);
+
     return events[index];
   }
 
@@ -183,13 +194,76 @@ export class StorageManager {
     let events = this.getEvents();
     events = events.filter(e => e.id !== id);
     this.saveEvents(events);
+
+    // Asynchronous backend deletion
+    this.deleteEventOnBackend(id);
+
     return events;
   }
 
   static resetToPresets() {
     const presets = createDefaultPresets();
     this.saveEvents(presets);
+
+    // Reset on backend asynchronously
+    fetch('./api/events/reset', { method: 'POST' }).catch(() => {});
+
     return presets;
+  }
+
+  // ==========================================================================
+  // Backend Workload Sharing & Cloud Sync Helpers
+  // ==========================================================================
+  static async syncEventToBackend(eventObj) {
+    try {
+      await fetch('./api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventObj)
+      });
+    } catch (e) {
+      // Offline fallback: kept in localStorage
+    }
+  }
+
+  static async updateEventOnBackend(id, updatedObj) {
+    try {
+      await fetch(`./api/events/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedObj)
+      });
+    } catch (e) {
+      // Offline fallback
+    }
+  }
+
+  static async deleteEventOnBackend(id) {
+    try {
+      await fetch(`./api/events/${id}`, { method: 'DELETE' });
+    } catch (e) {
+      // Offline fallback
+    }
+  }
+
+  /**
+   * Synchronizes local events with backend cloud storage in the background
+   */
+  static async syncWithServer() {
+    try {
+      const localEvents = this.getEvents();
+      const apiResult = await dispatchApi('/api/events/sync', {
+        method: 'POST',
+        body: JSON.stringify({ events: localEvents })
+      });
+      if (apiResult.isJson && apiResult.ok && apiResult.data && Array.isArray(apiResult.data.events)) {
+        this.saveEvents(apiResult.data.events);
+        return apiResult.data.events;
+      }
+    } catch (e) {
+      console.log('[Storage Cloud] Running in local offline mode');
+    }
+    return null;
   }
 
   static getSettings() {
@@ -219,7 +293,7 @@ export class StorageManager {
 
   static exportBackup() {
     const data = {
-      version: '1.0',
+      version: '2.0',
       exportedAt: new Date().toISOString(),
       events: this.getEvents(),
       settings: this.getSettings()
@@ -241,6 +315,8 @@ export class StorageManager {
         if (parsed.settings) {
           this.saveSettings(parsed.settings);
         }
+        // Sync imported events with server
+        this.syncWithServer();
         return true;
       }
       return false;

@@ -22,18 +22,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="./css/style.css?v=2.2.0">
-  <link rel="stylesheet" href="./css/sessions.css?v=2.2.0">
-  <link rel="stylesheet" href="./css/countdown.css?v=2.2.0">
-  <link rel="stylesheet" href="./css/calendar.css?v=2.2.0">
-  <link rel="stylesheet" href="./css/modal.css?v=2.2.0">
+  <link rel="stylesheet" href="./css/style.css?v=2.5.0">
+  <link rel="stylesheet" href="./css/sessions.css?v=2.5.0">
+  <link rel="stylesheet" href="./css/countdown.css?v=2.5.0">
+  <link rel="stylesheet" href="./css/calendar.css?v=2.5.0">
+  <link rel="stylesheet" href="./css/modal.css?v=2.5.0">
 
   <!-- Instant Cache Invalidator & SW Updater -->
   <script>
     if ('caches' in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'chronex-v2.3.0' && k !== 'chronex-fonts') {
+          if (k !== 'chronex-v2.5.0' && k !== 'chronex-fonts') {
             caches.delete(k);
           }
         });
@@ -145,6 +145,20 @@
           <span>Add Event</span>
         </button>
       </nav>
+
+      <!-- Mobile Header Actions (Visible on screens <= 860px) -->
+      <div class="mobile-header-actions" aria-label="Mobile Navigation Controls">
+        <button class="btn btn-primary btn-mobile-quick-add" id="btn-mobile-quick-add" title="Quick Add Countdown" aria-label="Quick Add Event">
+          <span>+</span>
+        </button>
+        <button class="hamburger-btn" id="btn-hamburger-menu" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-nav-drawer">
+          <span class="hamburger-box">
+            <span class="hamburger-line line-1"></span>
+            <span class="hamburger-line line-2"></span>
+            <span class="hamburger-line line-3"></span>
+          </span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -449,7 +463,9 @@
       <div class="form-body">
         <div class="form-group">
           <label for="input-login-email">Email Address <span class="required-star">*</span></label>
-          <input type="email" id="input-login-email" class="form-input" placeholder="trader@example.com" autocomplete="username" required>
+          <input type="email" id="input-login-email" class="form-input" placeholder="trader@example.com" autocomplete="username email" list="remembered-emails-list" required>
+          <datalist id="remembered-emails-list"></datalist>
+          <div class="remembered-account-hint hidden" id="login-account-hint"></div>
         </div>
 
         <div class="form-group">
@@ -590,7 +606,161 @@
     </div>
   </footer>
 
+  <!-- Mobile Navigation Drawer Overlay & Sheet -->
+  <div class="mobile-drawer-backdrop" id="mobile-drawer-backdrop" aria-hidden="true"></div>
+  <aside class="mobile-nav-drawer" id="mobile-nav-drawer" aria-label="Mobile Navigation Menu" aria-hidden="true">
+    <div class="mobile-drawer-header">
+      <div class="brand-wrapper">
+        <div class="brand-icon-box">
+          <img src="./assets/icons/icon.svg" alt="CHRONEX Logo" width="28" height="28">
+        </div>
+        <div class="brand-text">
+          <span class="drawer-brand-title">CHRONEX</span>
+          <span class="drawer-brand-sub">Mobile Terminal</span>
+        </div>
+      </div>
+      <button class="btn-icon-ghost drawer-close-btn" id="btn-close-mobile-drawer" aria-label="Close menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="mobile-drawer-body">
+      <!-- User Profile / Auth Card -->
+      <div class="drawer-user-card" id="drawer-user-card">
+        <!-- If logged out / Guest mode -->
+        <div class="drawer-auth-guest" id="drawer-auth-guest">
+          <div class="drawer-guest-info">
+            <span class="drawer-guest-avatar">👤</span>
+            <div>
+              <strong>Guest Trader</strong>
+              <span>Local Storage Mode</span>
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-drawer-login">Sign In / Sync</button>
+        </div>
+        <!-- If logged in -->
+        <div class="drawer-auth-user hidden" id="drawer-auth-user">
+          <div class="drawer-user-info">
+            <span class="user-avatar-circle" id="drawer-avatar-initials">U</span>
+            <div class="drawer-user-meta">
+              <strong id="drawer-user-name">User Name</strong>
+              <span class="mono" id="drawer-user-email">user@chronex.app</span>
+              <span class="cloud-sync-badge">● Cloud Sync Active</span>
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-drawer-logout">Log Out</button>
+        </div>
+      </div>
+
+      <!-- Primary Action: Add Event CTA -->
+      <button class="btn btn-primary drawer-add-btn" id="btn-drawer-add-event">
+        <span style="font-size: 1.2rem; line-height: 1;">+</span>
+        <span>Add Countdown Event</span>
+      </button>
+
+      <!-- Quick Toggles Section -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">Terminal Settings</div>
+        <div class="drawer-toggles-list">
+          <button class="drawer-toggle-row" id="btn-drawer-toggle-time-format">
+            <div class="toggle-row-left">
+              <span class="toggle-icon">⏱</span>
+              <span>Time Format</span>
+            </div>
+            <span class="toggle-val-pill mono" id="drawer-time-format-pill">24H</span>
+          </button>
+
+          <button class="drawer-toggle-row" id="btn-drawer-toggle-sound">
+            <div class="toggle-row-left">
+              <span class="toggle-icon">🔔</span>
+              <span>Audio Chimes</span>
+            </div>
+            <span class="toggle-val-pill" id="drawer-sound-pill">ON</span>
+          </button>
+
+          <button class="drawer-toggle-row" id="btn-drawer-notifications">
+            <div class="toggle-row-left">
+              <span class="toggle-icon">📢</span>
+              <span>Browser Alerts</span>
+            </div>
+            <span class="toggle-val-pill" id="drawer-notif-pill">Enable</span>
+          </button>
+
+          <button class="drawer-toggle-row hidden" id="btn-drawer-install-pwa">
+            <div class="toggle-row-left">
+              <span class="toggle-icon">📲</span>
+              <span>Install PWA</span>
+            </div>
+            <span class="toggle-val-pill">Install</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Section Jump Links -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">Jump to Section</div>
+        <nav class="drawer-nav-links">
+          <a href="#clocks-overview-grid" class="drawer-nav-item" data-drawer-nav>
+            <span class="nav-item-icon">🕒</span>
+            <span>Universal & Local Clocks</span>
+            <span class="nav-item-arrow">→</span>
+          </a>
+          <a href="#sessions-section" class="drawer-nav-item" data-drawer-nav>
+            <span class="nav-item-icon">🌐</span>
+            <span>Market Sessions</span>
+            <span class="nav-item-arrow">→</span>
+          </a>
+          <a href="#timeline-master-container" class="drawer-nav-item" data-drawer-nav>
+            <span class="nav-item-icon">📊</span>
+            <span>24-Hour Timeline</span>
+            <span class="nav-item-arrow">→</span>
+          </a>
+          <a href="#calendar-section" class="drawer-nav-item" data-drawer-nav>
+            <span class="nav-item-icon">📰</span>
+            <span>Live Economic Calendar</span>
+            <span class="nav-item-arrow">→</span>
+          </a>
+          <a href="#countdowns-section" class="drawer-nav-item" data-drawer-nav>
+            <span class="nav-item-icon">⏳</span>
+            <span>Countdowns & Releases</span>
+            <span class="nav-item-arrow">→</span>
+          </a>
+        </nav>
+      </div>
+
+      <!-- Data Backup & Reset Actions -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">Data Management</div>
+        <div class="drawer-meta-actions">
+          <button class="btn btn-secondary btn-sm" id="btn-drawer-export-backup">💾 Export Backup</button>
+          <button class="btn btn-secondary btn-sm" id="btn-drawer-import-backup">📥 Import Backup</button>
+          <button class="btn btn-secondary btn-sm" id="btn-drawer-restore-defaults">🔄 Restore Presets</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drawer Footer -->
+    <div class="mobile-drawer-footer">
+      <div class="drawer-status-line">
+        <span class="live-dot-green"></span>
+        <span id="drawer-backend-status">Backend Engine Active · Fast Mode</span>
+      </div>
+      <span class="drawer-ver mono">CHRONEX v2.4.0</span>
+    </div>
+  </aside>
+
+  <!-- Mobile Floating Action Button (FAB) -->
+  <button class="mobile-fab-add" id="btn-mobile-fab-add" title="Add Countdown Event" aria-label="Add Event">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <line x1="12" y1="5" x2="12" y2="19"></line>
+      <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+  </button>
+
   <!-- Application Script (ES Module) -->
-  <script type="module" src="./js/app.js?v=2.3.0"></script>
+  <script type="module" src="./js/app.js?v=2.5.0"></script>
 </body>
 </html>

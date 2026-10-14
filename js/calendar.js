@@ -1,13 +1,14 @@
 /**
  * Chronex Live Economic Calendar Engine
- * Real-time integration with live financial calendar APIs, currency filters,
- * impact badges, and 1-click "Pin to Countdowns" synchronization.
+ * High-performance backend workload sharing, real-time query filtering,
+ * zero-lag DOM updates, and 1-click "Pin to Countdowns" synchronization.
  */
 
-import { StorageManager } from './storage.js?v=2.1.0';
-import { chronexAudio } from './audio.js?v=2.1.0';
+import { StorageManager } from './storage.js?v=2.5.0';
+import { chronexAudio } from './audio.js?v=2.5.0';
+import { dispatchApi } from './auth.js?v=2.5.0';
 
-const CALENDAR_CACHE_KEY = 'chronex_live_calendar_cache_v1';
+const CALENDAR_CACHE_KEY = 'chronex_live_calendar_cache_v2';
 
 export class CalendarManager {
   constructor(options = {}) {
@@ -20,14 +21,16 @@ export class CalendarManager {
     this.searchQuery = '';
     this.isLoading = false;
     this.onEventPinned = options.onEventPinned || null;
+    this.lastTickBucket = -1;
+    this.searchDebounceTimer = null;
   }
 
   async init() {
-    // Load from cache first for instant load
+    // 1. Instant render from local cache
     this.loadCache();
     this.render();
 
-    // Fetch fresh data
+    // 2. Fetch fresh pre-processed data from backend
     await this.fetchLiveEvents();
   }
 
@@ -59,51 +62,58 @@ export class CalendarManager {
 
   async fetchLiveEvents() {
     this.setLoading(true);
-    let rawEvents = null;
+    let eventsLoaded = false;
 
-    // 1. Try local server proxy first
+    // 1. High-Performance Backend API (handles ingestion, normalization, filtering)
     try {
-      const proxyRes = await fetch('./api/calendar', { cache: 'no-cache' });
-      if (proxyRes.ok) {
-        const json = await proxyRes.json();
-        rawEvents = json.events || (Array.isArray(json) ? json : null);
+      const queryParams = new URLSearchParams({
+        currency: this.activeCurrency,
+        impact: this.activeImpact,
+        search: this.searchQuery,
+        limit: '100'
+      });
+
+      const apiResult = await dispatchApi(`/api/calendar?${queryParams.toString()}`);
+      if (apiResult.isJson && apiResult.ok && apiResult.data && Array.isArray(apiResult.data.events)) {
+        this.events = apiResult.data.events;
+        this.saveCache(this.events);
+        eventsLoaded = true;
+        this.setLoading(false, true);
+        this.render();
+        return;
       }
     } catch (e) {
-      console.log('Local proxy not available, attempting direct/fallback...');
+      console.log('[Calendar Engine] Local server proxy error, checking fallback...');
     }
 
-    // 2. Direct fetch to CORS-enabled FinanceCalendar endpoint
-    if (!rawEvents) {
+    // 2. Direct Fallback if backend proxy is temporarily unreachable
+    if (!eventsLoaded) {
       try {
         const directRes = await fetch('https://www.financecalendar.com/wp-json/fc/v1/calendar');
         if (directRes.ok) {
           const json = await directRes.json();
-          rawEvents = json.events || (Array.isArray(json) ? json : null);
+          const rawEvents = json.events || (Array.isArray(json) ? json : null);
+          if (rawEvents) {
+            this.events = this.normalizeEvents(rawEvents);
+            this.saveCache(this.events);
+            eventsLoaded = true;
+          }
         }
       } catch (e) {
         console.warn('Direct fetch failed, falling back to cache:', e.message);
       }
     }
 
-    if (rawEvents && Array.isArray(rawEvents)) {
-      this.events = this.normalizeEvents(rawEvents);
-      this.saveCache(this.events);
-    }
-
-    this.setLoading(false);
+    this.setLoading(false, eventsLoaded);
     this.render();
   }
 
   normalizeEvents(rawList) {
     return rawList.map((item, idx) => {
-      // Determine timestamp
-      let dateIso = item.time_utc || (item.date ? `${item.date}T12:00:00Z` : new Date().toISOString());
-      
-      // Impact mapping
+      const dateIso = item.time_utc || (item.date ? `${item.date}T12:00:00Z` : new Date().toISOString());
       let impact = (item.impact || 'medium').toLowerCase();
       if (!['high', 'medium', 'low'].includes(impact)) impact = 'medium';
 
-      // Detect Country & Currency
       const name = item.name || item.title || 'Economic Release';
       const title = item.title || item.name || '';
       const textToScan = `${name} ${title}`.toLowerCase();
@@ -141,14 +151,14 @@ export class CalendarManager {
     });
   }
 
-  setLoading(isLoading) {
+  setLoading(isLoading, isSuccess = true) {
     this.isLoading = isLoading;
     if (this.statusEl) {
       if (isLoading) {
-        this.statusEl.innerHTML = `<span class="spinner-sm"></span> Syncing Live Feed...`;
-      } else if (this.lastFetched) {
+        this.statusEl.innerHTML = `<span class="spinner-sm"></span> Syncing Feed...`;
+      } else if (isSuccess && this.lastFetched) {
         const timeStr = this.lastFetched.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        this.statusEl.innerHTML = `<span class="live-dot-green"></span> Synced at ${timeStr}`;
+        this.statusEl.innerHTML = `<span class="live-dot-green"></span> Synced at ${timeStr} · Fast Server`;
       } else {
         this.statusEl.textContent = 'Offline / Cached';
       }
@@ -157,30 +167,32 @@ export class CalendarManager {
 
   setCurrencyFilter(cur) {
     this.activeCurrency = cur;
-    this.render();
+    // Re-fetch or re-filter from server
+    this.fetchLiveEvents();
   }
 
   setImpactFilter(impact) {
     this.activeImpact = impact;
-    this.render();
+    this.fetchLiveEvents();
   }
 
   setSearch(query) {
     this.searchQuery = query.toLowerCase().trim();
-    this.render();
+    // Debounce to prevent lag during fast typing
+    clearTimeout(this.searchDebounceTimer);
+    this.searchDebounceTimer = setTimeout(() => {
+      this.fetchLiveEvents();
+    }, 180);
   }
 
   getFilteredEvents() {
     return this.events.filter(e => {
-      // Currency filter
       if (this.activeCurrency !== 'all' && e.currency !== this.activeCurrency) {
         return false;
       }
-      // Impact filter
       if (this.activeImpact !== 'all' && e.impact !== this.activeImpact) {
         return false;
       }
-      // Search query
       if (this.searchQuery) {
         const text = `${e.title} ${e.fullTitle} ${e.currency}`.toLowerCase();
         if (!text.includes(this.searchQuery)) return false;
@@ -189,10 +201,23 @@ export class CalendarManager {
     });
   }
 
+  /**
+   * Zero-lag tick: updates time remaining badges at 30s bucket resolution
+   * avoids layout thrashing and prevents DOM innerHTML reconstruction
+   */
   tick() {
     if (!this.container) return;
     const now = Date.now();
-    this.container.querySelectorAll('.calendar-event-row').forEach(row => {
+    const currentBucket = Math.floor(now / 30000); // 30s bucket
+
+    // Only run DOM scan if bucket changed
+    if (currentBucket === this.lastTickBucket) return;
+    this.lastTickBucket = currentBucket;
+
+    const rows = this.container.querySelectorAll('.calendar-event-row');
+    if (rows.length === 0) return;
+
+    rows.forEach(row => {
       const id = row.getAttribute('data-id');
       const ev = this.events.find(e => e.id === id);
       if (!ev) return;
@@ -201,19 +226,24 @@ export class CalendarManager {
       const badgeContainer = row.querySelector('.cal-col-countdown');
       if (!badgeContainer) return;
 
+      let badgeHtml = '';
       if (diff <= 0 && diff > -1800000) {
-        badgeContainer.innerHTML = '<span class="cal-badge-live">LIVE NOW</span>';
+        badgeHtml = '<span class="cal-badge-live">LIVE NOW</span>';
       } else if (diff <= -1800000) {
-        badgeContainer.innerHTML = '<span class="cal-badge-past">COMPLETED</span>';
+        badgeHtml = '<span class="cal-badge-past">COMPLETED</span>';
       } else {
         const totalSecs = Math.floor(diff / 1000);
         const days = Math.floor(totalSecs / 86400);
         const hours = Math.floor((totalSecs % 86400) / 3600);
         const mins = Math.floor((totalSecs % 3600) / 60);
 
-        let timeStr = days > 0 ? `in ${days}d ${hours}h` : (hours > 0 ? `in ${hours}h ${mins}m` : `in ${mins}m`);
+        const timeStr = days > 0 ? `in ${days}d ${hours}h` : (hours > 0 ? `in ${hours}h ${mins}m` : `in ${mins}m`);
         const isUrgent = diff < 3600000;
-        badgeContainer.innerHTML = `<span class="cal-badge-countdown mono ${isUrgent ? 'urgent' : ''}">${timeStr}</span>`;
+        badgeHtml = `<span class="cal-badge-countdown mono ${isUrgent ? 'urgent' : ''}">${timeStr}</span>`;
+      }
+
+      if (badgeContainer.innerHTML !== badgeHtml) {
+        badgeContainer.innerHTML = badgeHtml;
       }
     });
   }
@@ -245,7 +275,6 @@ export class CalendarManager {
       const now = Date.now();
       const diff = d.getTime() - now;
 
-      // Countdown label
       let countdownBadge = '';
       if (diff <= 0 && diff > -1800000) {
         countdownBadge = '<span class="cal-badge-live">LIVE NOW</span>';
@@ -270,14 +299,13 @@ export class CalendarManager {
         countdownBadge = `<span class="cal-badge-countdown mono ${isUrgent ? 'urgent' : ''}">${timeStr}</span>`;
       }
 
-      // Format date in UTC and local
       const localTimeStr = d.toLocaleDateString(undefined, {
         weekday: 'short',
         month: 'short',
         day: 'numeric'
       }) + ' · ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      const isPinned = pinnedEventTitles.has(ev.title.toLowerCase());
+      const isPinned = pinnedEventTitles.has(ev.title.toLowerCase()) || pinnedEventTitles.has(`[${ev.currency}] ${ev.title}`.toLowerCase());
 
       return `
         <div class="calendar-event-row" data-id="${ev.id}">

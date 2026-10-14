@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chronex-v2.3.0';
+const CACHE_NAME = 'chronex-v2.5.0';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -41,7 +41,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name !== CACHE_NAME && (name.startsWith('chronex-') || name === 'chronex-fonts'))
+          .filter((name) => name !== CACHE_NAME && name.startsWith('chronex-') && name !== 'chronex-fonts')
           .map((name) => {
             console.log('[Chronex SW] Purging obsolete cache:', name);
             return caches.delete(name);
